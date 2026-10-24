@@ -218,3 +218,12 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+
+data/public_samples/
+data/real_*
+*.pt
+*.pth
+*.ckpt
+.env
+
