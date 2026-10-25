@@ -32,3 +32,9 @@
 - Tests (measured): bundles --today 2026-10-26 -> "signed affidavits: True"; t_signature 4/4 cases PASS (verified / mismatch_detected / manual_review_required x2); test_synth + test_contracts 9/9 PASS.
 - Numbers (measured, output/*.result.json): pipeline 12/12 apps; APP-01 clear (0 findings), APP-11 clear (0 findings, 1 pending_verification alert from the injected fire_not_in_issuer_db = as designed), APP-12 clear; 0.14-0.24 s/app (APP-01 2.13 s incl. first-run warm-up).
 - The earlier ASSUMPTION "APP-01/APP-11 clear once signed" is now MEASURED. Teammates: pull main.
+
+## WK1 check 3 - dashboard (streamlit 1.66.1)
+- Changed: nothing; dashboard/app.py = reference copy, no deprecation ERRORS on 1.66.1.
+- Tests (measured): headless server on :8599 -> / 200, /_stcore/health ok, log clean; streamlit AppTest ran app.py and selected all 12 demo apps: 0 exceptions, 0 st.error.
+- Warnings only: use_container_width deprecated (use width='stretch'); sqlite ResourceWarning (unclosed audit.db connections). Not fixed (warnings, not errors).
+- UNTESTED: real browser clicks (Decision selectbox submit, file upload), MPS training.
