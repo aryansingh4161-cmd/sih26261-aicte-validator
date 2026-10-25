@@ -250,3 +250,6 @@ __pycache__/
 config/trust/
 
 config/trust/
+
+# scale test output (tools/scale_test.py), regenerated
+data/scale/

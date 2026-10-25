@@ -72,16 +72,22 @@ def _sidecar_from_pdf(pdf_path, img_path):
         json.dump(items, f)
 
 
-def build(out: str, today: date, seed: int = 11) -> dict:
+REUSE_FROM = {"APP-13": "APP-09", "APP-14": "APP-03"}     # reuse defect -> the earlier app it copies from
+
+
+def build(out: str, today: date, seed: int = 11, scenarios: dict | None = None, data_dir: str = "data",
+          root_copy: str = "config/trust/demo_root.pem", reuse_from: dict | None = None) -> dict:
+    """Defaults = the demo set. tools/scale_test.py passes its own scenarios / data_dir / root_copy so the demo is untouched."""
+    scenarios, reuse_from = scenarios or SCENARIOS, reuse_from or REUSE_FROM
     rng = random.Random(seed)
     os.makedirs(os.path.join(out, "apps"), exist_ok=True)
     records, fire_db, uni_db, truth = {}, {}, {}, {}
     shared = {}                                         # values later apps reuse (F8)
     signing = can_sign()
-    pki = make_pki(os.path.join(out, "pki")) if signing else None
+    pki = make_pki(os.path.join(out, "pki"), root_copy=root_copy) if signing else None
     ay0 = today.year if today.month >= 7 else today.year - 1
     ay0 = ay0 + 1                                       # applications are for the NEXT academic year
-    for app_id, (defects, expect, lane) in SCENARIOS.items():
+    for app_id, (defects, expect, lane) in scenarios.items():
         r = random.Random(f"{seed}-{app_id}")
         inst = C.make_institute(r, ay0)
         if "struct_missing_old_building" in defects or "struct_short_validity" in defects or "scanned_struct_tampered" in defects:
@@ -121,10 +127,9 @@ def build(out: str, today: date, seed: int = 11) -> dict:
         real_valid = det["valid_until"]
         if "expired_fire" in defects:
             det["issue_date"] = today - timedelta(days=365 * 3 + 40); det["valid_until"] = today - timedelta(days=40); real_valid = det["valid_until"]
-        if app_id == "APP-03":
-            shared["fire_no"] = det["fire_no"]
+        shared.setdefault(app_id, {})["fire_no"] = det["fire_no"]
         if "fire_no_reused_from_app03" in defects:
-            det["fire_no"] = shared["fire_no"]
+            det["fire_no"] = shared[reuse_from[app_id]]["fire_no"]
         fire_inst = inst
         if "name_mismatch" in defects:
             fire_inst = dict(inst); fire_inst["institute_name"] = inst["institute_name"].split()[0] + " Global Academy"
@@ -170,10 +175,9 @@ def build(out: str, today: date, seed: int = 11) -> dict:
             if "photo_far" in defects and k == 0:
                 lat += 0.45
             pp = os.path.join(pdir, f"campus_{k + 1}.jpg"); im = _photo(pp, r, lat, lon); photos.append(pp)
-        if app_id == "APP-09":
-            shared["photo"] = photos[0]
+        shared[app_id]["photo"] = photos[0]
         if "photo_reused_from_app09" in defects:            # same picture, re-tagged with this campus GPS
-            _photo(photos[0], r, inst["latitude"], inst["longitude"], seed_img=Image.open(shared["photo"]).copy())
+            _photo(photos[0], r, inst["latitude"], inst["longitude"], seed_img=Image.open(shared[reuse_from[app_id]]["photo"]).copy())
         if "photo_duplicate" in defects:
             pp = os.path.join(pdir, "campus_3.jpg"); _photo(pp, r, inst["latitude"], inst["longitude"], seed_img=Image.open(photos[1]).copy()); photos.append(pp)
         man = {"app_id": app_id, "category": "eoa_existing_regular", "academic_year": inst["academic_year"], "permanent_id": pid,
@@ -184,10 +188,10 @@ def build(out: str, today: date, seed: int = 11) -> dict:
         truth[app_id] = {"defects": defects, "expected_rules": expect + ([] if signing else ["R-SIG-affidavit_2"]),
                          "expected_lane": lane if signing or lane != "clear" else "return_for_rectification", "layout": layout,
                          "needs_model": "scanned_struct_tampered" in defects}
-    os.makedirs("data/mock_issuers", exist_ok=True)
-    json.dump(records, open("data/aicte_records.json", "w"), indent=2)
-    json.dump(fire_db, open("data/mock_issuers/fire.json", "w"), indent=2)
-    json.dump(uni_db, open("data/mock_issuers/university.json", "w"), indent=2)
+    os.makedirs(os.path.join(data_dir, "mock_issuers"), exist_ok=True)
+    json.dump(records, open(os.path.join(data_dir, "aicte_records.json"), "w"), indent=2)
+    json.dump(fire_db, open(os.path.join(data_dir, "mock_issuers", "fire.json"), "w"), indent=2)
+    json.dump(uni_db, open(os.path.join(data_dir, "mock_issuers", "university.json"), "w"), indent=2)
     json.dump({"today": today.isoformat(), "signed_affidavits": signing, "apps": truth}, open(os.path.join(out, "truth.json"), "w"), indent=2)
     return truth
 

@@ -8,6 +8,7 @@ import glob
 import json
 import os
 import time
+from contextlib import contextmanager
 from datetime import date
 
 import yaml
@@ -29,6 +30,17 @@ from .triage import assign_lane, make_alerts
 from .util import now_iso, sha256_file
 
 SYSTEM = ("pramaan-pipeline", "system")
+
+
+@contextmanager
+def _step(timings: dict | None, name: str):
+    """Optional timing hook (tools/scale_test.py). Adds seconds to timings[name]; no effect on outputs."""
+    t = time.perf_counter()
+    try:
+        yield
+    finally:
+        if timings is not None:
+            timings[name] = timings.get(name, 0.0) + time.perf_counter() - t
 
 
 def _settings(path="config/settings.yaml") -> dict:
@@ -53,7 +65,7 @@ def _vfinding(app, v):
 def run_application(manifest_path: str, out_dir: str = "output", today: date | None = None, audit_db: str = "output/audit.db",
                     records_path: str = "data/aicte_records.json", specs_dir: str = "config/doc_specs",
                     rulepack: str = "config/rulepack_eoa_existing.yaml", weights: str = "data/models/tamper_unet.pt",
-                    reuse_db: str | None = None) -> ApplicationResult:
+                    reuse_db: str | None = None, trust_dir: str = "config/trust", timings: dict | None = None) -> ApplicationResult:
     t0, today = time.time(), today or date.today()
     st = _settings()
     with open(manifest_path) as f:
@@ -66,10 +78,13 @@ def run_application(manifest_path: str, out_dir: str = "output", today: date | N
     log.append(*SYSTEM, "record checked", app.app_id, {"source": "MOCK AICTE records", "found": record is not None})
     if record is None:
         notes.append("No AICTE record found for this Permanent Id in the mock records; record-based checks skipped.")
-    trust = sorted(glob.glob("config/trust/*.pem"))
+    trust = sorted(glob.glob(os.path.join(trust_dir, "*.pem")))
     docs, findings, vers = [], [], []
     for slot in app.documents:
-        d = classify_and_extract(ingest(slot.path, f"{app.app_id}-{slot.slot}", slot.slot), specs_dir)
+        with _step(timings, "ingest"):
+            d = ingest(slot.path, f"{app.app_id}-{slot.slot}", slot.slot)
+        with _step(timings, "classify_extract"):
+            d = classify_and_extract(d, specs_dir)
         docs.append(d)
         log.append(*SYSTEM, "document read", app.app_id, {"doc_id": d.doc_id, "sha256": d.sha256, "type": d.doc_type,
                                                          "confidence": d.doc_type_confidence, "fields": sorted(d.fields)})
@@ -83,11 +98,13 @@ def run_application(manifest_path: str, out_dir: str = "output", today: date | N
                                     rule_id="X-SLOT", title="Document uploaded under the wrong checklist item",
                                     reason=f"Uploaded as '{slot.slot}' but it reads like '{d.doc_type}'.", severity="medium", lane="human_review",
                                     evidence=[Evidence(doc_id=d.doc_id, page=1, text=d.filename)]))
-        findings += pdf_structure_checks(app.app_id, d, specs.get(d.doc_type, {}))
-        if d.doc_type == "affidavit_2" or d.metadata.get("has_signature_field"):
-            vers.append(signature_check(d, trust))
-        findings += tamper_check(app.app_id, d, weights, float(st.get("tamper_threshold", 0.5)))
-        vers += verify_document(d, app, records)
+        with _step(timings, "forensics"):
+            findings += pdf_structure_checks(app.app_id, d, specs.get(d.doc_type, {}))
+            if d.doc_type == "affidavit_2" or d.metadata.get("has_signature_field"):
+                vers.append(signature_check(d, trust))
+            findings += tamper_check(app.app_id, d, weights, float(st.get("tamper_threshold", 0.5)))
+        with _step(timings, "verification"):
+            vers += verify_document(d, app, records)
     if not available(weights):
         notes.append("Tamper model not run (weights or torch missing on this machine).")
     for v in vers:
@@ -95,14 +112,18 @@ def run_application(manifest_path: str, out_dir: str = "output", today: date | N
                                                            "mock": v.mock, "status": v.status, "payload_hash": v.payload_hash})
         if (f := _vfinding(app, v)):
             findings.append(f)
-    findings += run_rules(app, docs, vers, record, rulepack, today)
+    with _step(timings, "rules"):
+        findings += run_rules(app, docs, vers, record, rulepack, today)
     log.append(*SYSTEM, "rules applied", app.app_id, {"rulepack": rulepack, "sha256": sha256_file(rulepack), "today": today.isoformat()})
-    findings += run_crosscheck(app, docs, record, today)
+    with _step(timings, "crosscheck"):
+        findings += run_crosscheck(app, docs, record, today)
     reuse_db = reuse_db or os.path.join(os.path.dirname(audit_db) or ".", "reuse.db")
-    findings += check_reuse(app, docs, reuse_db)
+    with _step(timings, "reuse"):
+        findings += check_reuse(app, docs, reuse_db)
     log.append(*SYSTEM, "record checked", app.app_id, {"source": "reuse index", "db": reuse_db})
     if app.photos:
-        findings += check_photos(app, today, float(st.get("photo_max_km", 1.0)), float(st.get("blur_threshold", 60.0)))
+        with _step(timings, "photos"):
+            findings += check_photos(app, today, float(st.get("photo_max_km", 1.0)), float(st.get("blur_threshold", 60.0)))
     seen: dict = {}
     for i, f in enumerate(findings):                       # make finding ids unique
         n = seen.get(f.finding_id, 0); seen[f.finding_id] = n + 1
@@ -119,7 +140,8 @@ def run_application(manifest_path: str, out_dir: str = "output", today: date | N
     head = log.append(*SYSTEM, "observation", app.app_id, {"lane": lane, "findings": len(findings), "advisory": True,
                                                           "priority": pr, "priority_weights": "designed, assumption"})
     res = res.model_copy(update={"priority": pr, "priority_reasons": why, "audit_head_hash": head})
-    build_report(res, out_dir)
+    with _step(timings, "report"):
+        build_report(res, out_dir)
     return res
 
 
