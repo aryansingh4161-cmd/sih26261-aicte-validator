@@ -76,7 +76,7 @@ def main():
     pipe = load_ai() if a.method == "ai" else None
     os.makedirs(os.path.join(a.data, split), exist_ok=True)
     rows = []
-    with tempfile.TemporaryDirectory() as tmp:
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
         for i in range(a.n):
             rng = random.Random(f"{a.seed}-{split}-{i}")
             from .docs import DOC_TYPES

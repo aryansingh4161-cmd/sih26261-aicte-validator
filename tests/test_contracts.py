@@ -89,7 +89,7 @@ def t_audit(m):
         log.append("sys", "system", "x", "T1", {"i": i})
     assert log.verify_chain() == (True, None)
     import sqlite3
-    c = sqlite3.connect(p); c.execute("UPDATE audit SET detail='{\"i\": 99}' WHERE id=2"); c.commit()
+    c = sqlite3.connect(p); c.execute("UPDATE audit SET detail='{\"i\": 99}' WHERE id=2"); c.commit(); c.close()
     assert m.AuditLog(p).verify_chain() == (False, 2)
 
 
@@ -397,13 +397,30 @@ def t_reference_sync(m):
         print("  differ from reference/: " + ", ".join(bad) + "  (copy the working version into reference/)")
     assert not bad, bad
 
+
+def t_audit_close(m):
+    """WK17 (Windows WinError 32): AuditLog leaves no open SQLite handle - close(), `with`, and deleting the folder
+    right after must not raise, and no 'unclosed database' ResourceWarning may be emitted."""
+    import gc, shutil, warnings
+    d = tempfile.mkdtemp()
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        log = m.AuditLog(os.path.join(d, "audit.db")); log.append("t", "system", "x", None, {"i": 1}); log.close(); log.close()
+        with m.AuditLog(os.path.join(d, "audit.db")) as l2:
+            l2.append("t", "system", "y", None, {}); assert l2.verify_chain() == (True, None) and len(l2.rows()) == 2
+        shutil.rmtree(d)                                            # must not raise (fails on Windows if a handle is open)
+        del log, l2; gc.collect()
+    leaks = [str(x.message) for x in w if issubclass(x.category, ResourceWarning)]
+    assert not leaks and not os.path.exists(d), leaks
+
 class _Skip(Exception):
     pass
 
 
 MODULE = {"signature": "forensics", "priority": "priority", "reuse": "reuse", "area": "rules", "issuer_webhook": "issuer_async", "retention": "audit", "masking": "privacy",
           "metadata": "metadata_forensics", "table_borderless": "classify_extract",
-          "reuse_photo_strict": "reuse", "reference_sync": "schemas"}   # test name -> module in pramaan/
+          "reuse_photo_strict": "reuse", "reference_sync": "schemas",
+          "audit_close": "audit"}   # test name -> module in pramaan/
 
 
 TESTS = {"ingest": t_ingest, "classify_extract": t_classify_extract, "rules": t_rules, "crosscheck": t_crosscheck,
@@ -413,7 +430,7 @@ TESTS = {"ingest": t_ingest, "classify_extract": t_classify_extract, "rules": t_
          "retention": t_retention, "masking": t_masking,
          "metadata": t_metadata, "table_borderless": t_table_borderless,
          "reuse_photo_strict": t_reuse_photo_strict,
-         "reference_sync": t_reference_sync}
+         "reference_sync": t_reference_sync, "audit_close": t_audit_close}
 
 if __name__ == "__main__":
     want = sys.argv[1:] or list(TESTS)

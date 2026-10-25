@@ -67,11 +67,21 @@ def run_application(manifest_path: str, out_dir: str = "output", today: date | N
                     records_path: str = "data/aicte_records.json", specs_dir: str = "config/doc_specs",
                     rulepack: str = "config/rulepack_eoa_existing.yaml", weights: str = "data/models/tamper_unet.pt",
                     reuse_db: str | None = None, trust_dir: str = "config/trust", timings: dict | None = None) -> ApplicationResult:
+    log = AuditLog(audit_db)
+    try:                                   # always release the audit database (Windows cannot delete an open file)
+        return _run(log, manifest_path, out_dir, today, audit_db, records_path, specs_dir, rulepack, weights, reuse_db,
+                    trust_dir, timings)
+    finally:
+        log.close()
+
+
+def _run(log: AuditLog, manifest_path, out_dir, today, audit_db, records_path, specs_dir, rulepack, weights, reuse_db,
+         trust_dir, timings) -> ApplicationResult:
     t0, today = time.time(), today or date.today()
     st = _settings()
     with open(manifest_path) as f:
         app = Application(**json.load(f))
-    log, notes = AuditLog(audit_db), []
+    notes: list = []
     log.append(*SYSTEM, "application received", app.app_id, {"manifest": manifest_path, "documents": len(app.documents)})
     specs = {s["doc_type"]: s for s in load_specs(specs_dir)}
     records = load_records(records_path)

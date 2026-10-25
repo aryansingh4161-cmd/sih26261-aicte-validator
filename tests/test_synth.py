@@ -30,7 +30,7 @@ def test_every_doc_type_and_layout_renders():
     rng = random.Random(1)
     inst = C.make_institute(rng)
     det = D.default_details(rng, inst)
-    with tempfile.TemporaryDirectory() as t:
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as t:
         for dt in D.DOC_TYPES:
             for lay in D.LAYOUTS:
                 r = D.render_pdf(dt, lay, inst, det, os.path.join(t, f"{dt}_{lay}.pdf"))
@@ -38,7 +38,7 @@ def test_every_doc_type_and_layout_renders():
 
 
 def test_dataset_sample_and_masks():
-    with tempfile.TemporaryDirectory() as t, tempfile.TemporaryDirectory() as tmp:
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as t, tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
         rows = [make_one("train", i, t, 1, tmp) for i in range(8)]
         assert any(r["tampered"] == 1 for r in rows) and any(r["tampered"] == 0 for r in rows)
         for r in rows:

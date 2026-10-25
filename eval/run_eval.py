@@ -25,7 +25,7 @@ from pramaan.util import norm_name
 
 def extraction(n_inst: int, seed: int = 101):
     rows, per = [], {}
-    with tempfile.TemporaryDirectory() as tmp:
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
         for k in range(n_inst):
             rng = random.Random(seed + k); inst = C.make_institute(rng); det = D.default_details(rng, inst)
             for dt in D.BUILDERS:
@@ -53,7 +53,7 @@ def demo(demo_dir: str, today: date):
     truth = json.load(open(os.path.join(demo_dir, "truth.json")))
     hit = exp = extra = lane_ok = n = 0
     secs, detail = [], []
-    with tempfile.TemporaryDirectory() as tmp:
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
         for app_id, t in truth["apps"].items():
             t0 = time.time()
             res = run_application(os.path.join(demo_dir, "apps", f"{app_id}.json"), tmp, today, os.path.join(tmp, "audit.db"))

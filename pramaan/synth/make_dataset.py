@@ -98,7 +98,7 @@ def main():
     counts = {"train": a.n_train, "val": a.n_val}
     counts.update({s: a.n_test for s in SPLITS if s.startswith("test")})
     rows: List[Dict] = []
-    with tempfile.TemporaryDirectory() as tmp:
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
         for split, n in counts.items():
             for i in range(n):
                 rows.append(make_one(split, i, a.out, a.seed, tmp))

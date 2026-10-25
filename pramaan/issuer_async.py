@@ -14,6 +14,7 @@ import hmac
 import json
 import os
 import sqlite3
+from contextlib import closing
 from datetime import date
 
 from starlette.applications import Starlette
@@ -77,7 +78,11 @@ def apply_reply(body: dict, out_dir: str, audit_db: str, manifests_dir: str, rec
         app = Application(app_id=app_id, category=res.category, academic_year=res.academic_year, permanent_id="", submitted_on="")
     if (vf := _vfinding(app, v)):
         findings.append(vf)
-    log = AuditLog(audit_db)
+    with AuditLog(audit_db) as log:
+        return _fold(log, res, app, app_id, v, vers, findings, records_path, out_dir, today)
+
+
+def _fold(log, res, app, app_id, v, vers, findings, records_path, out_dir, today) -> ApplicationResult:
     log.append(*ACTOR, "source response", app_id, {"doc_id": v.doc_id, "method": v.method, "source": v.source, "mock": True,
                                                    "status": v.status, "payload_hash": v.payload_hash, "async": True})
     lane, alerts = assign_lane(findings), make_alerts(app, findings, vers, today)
@@ -94,8 +99,15 @@ def create_app(out_dir: str = "output", audit_db: str = "output/audit.db", manif
                records_path: str = "data/aicte_records.json", today: date | None = None, secret: str | None = None) -> Starlette:
     secret = secret or str(_settings().get("issuer_webhook_secret", ""))
     os.makedirs(out_dir, exist_ok=True)
-    seen = sqlite3.connect(os.path.join(out_dir, "issuer_webhook.db"), check_same_thread=False)
-    seen.execute("CREATE TABLE IF NOT EXISTS deliveries (reference TEXT, timestamp TEXT, received_at TEXT, PRIMARY KEY (reference, timestamp))")
+    seen_db = os.path.join(out_dir, "issuer_webhook.db")
+
+    def deliveries(sql: str, args: tuple = ()) -> None:      # one short connection per call, always closed
+        with closing(sqlite3.connect(seen_db)) as c:
+            c.execute("CREATE TABLE IF NOT EXISTS deliveries (reference TEXT, timestamp TEXT, received_at TEXT, "
+                      "PRIMARY KEY (reference, timestamp))")
+            c.execute(sql, args); c.commit()
+
+    deliveries("SELECT 1")
 
     async def webhook(request: Request):
         try:
@@ -107,13 +119,13 @@ def create_app(out_dir: str = "output", audit_db: str = "output/audit.db", manif
         if any(k not in body for k in FIELDS) or body["method"] not in VERIFICATION_METHODS or body["status"] not in VERIFICATION_STATUSES:
             return JSONResponse({"error": f"need {FIELDS} with a known method and status"}, 422)
         try:
-            seen.execute("INSERT INTO deliveries VALUES (?,?,?)", (str(body["reference"]), body["timestamp"], now_iso())); seen.commit()
+            deliveries("INSERT INTO deliveries VALUES (?,?,?)", (str(body["reference"]), body["timestamp"], now_iso()))
         except sqlite3.IntegrityError:
             return JSONResponse({"result": "duplicate delivery ignored"}, 409)
         try:
             res = apply_reply(body, out_dir, audit_db, manifests_dir, records_path, today or date.today())
         except Exception as e:                     # not applied -> forget the delivery so the sender can retry
-            seen.execute("DELETE FROM deliveries WHERE reference=? AND timestamp=?", (str(body["reference"]), body["timestamp"])); seen.commit()
+            deliveries("DELETE FROM deliveries WHERE reference=? AND timestamp=?", (str(body["reference"]), body["timestamp"]))
             known = isinstance(e, (FileNotFoundError, KeyError))
             return JSONResponse({"error": f"{'unknown document or no stored result' if known else 'could not apply'}: {e}"[:200]},
                                 404 if known else 500)
