@@ -295,18 +295,65 @@ def t_masking(m):
     html = render_html(r.model_copy(update={"findings": [f]}))
     assert name not in html and stamp not in html and m.mask(name) in html
 
+
+def t_metadata(m):
+    """metadata_forensics (WK14): revision diff (1), EXIF software (4), EXIF thumbnail (5) on synthetic files, and
+    NO false alarm on every clean demo document and photo."""
+    import glob
+    from datetime import datetime
+    from PIL import Image, ImageDraw
+    from pramaan.ingest import ingest
+    from pramaan.synth.pdf_edit import incremental_text_edit
+    from pramaan.synth.photos import photo
+    rng = random.Random(8); inst = C.make_institute(rng, 2026); det = D.default_details(rng, inst)
+    p = D.render_pdf("fire_cert", "B", INST, det, os.path.join(TMP, "meta_fire.pdf"))["path"]
+    assert m.check_metadata("T1", ingest(p, "T1-fire_cert"), "2026-12-31") == []
+    old = C.fmt_dmy(det["valid_until"]); incremental_text_edit(p, old, "31-12-2030", datetime(2026, 10, 1, 11))
+    f = [x for x in m.check_metadata("T1", ingest(p, "T1-fire_cert"), "2026-12-31") if x.rule_id == "F-META-REVISION-DIFF"]
+    assert len(f) == 1 and old in f[0].evidence[0].text and "31-12-2030" in f[0].evidence[0].text and f[0].evidence[0].bbox
+    assert f[0].lane == "human_review" and f[0].source == "pdf_forensics" and "forged" not in f[0].reason.lower()
+    ph = os.path.join(TMP, "cam.jpg"); photo(ph, random.Random(1), 28.6, 77.2, taken=datetime(2026, 10, 1, 10))
+    doc = lambda q: DocumentRecord(doc_id="photo:x", filename="x.jpg", path=q, sha256="")
+    assert m.check_metadata("T1", doc(ph), "2026-10-20", photo=True) == []                    # clean camera photo
+    from pramaan.image_meta import exif_thumbnail, with_thumbnail
+    im = Image.open(ph); ex = im.getexif(); ex[0x0131] = "GIMP 2.10"                          # same pixels, thumbnail, tables
+    sw = os.path.join(TMP, "gimp.jpg"); im.save(sw, exif=with_thumbnail(ex.tobytes(), exif_thumbnail(im)), qtables=im.quantization)
+    ids = [x.rule_id for x in m.check_metadata("T1", doc(sw), "2026-10-20", photo=True)]
+    assert ids == ["F-META-EXIF-SOFTWARE"], ids
+    ed = Image.open(ph).convert("RGB"); ImageDraw.Draw(ed).rectangle([300, 100, 620, 400], fill=(250, 250, 250))
+    th = exif_thumbnail(Image.open(ph)); ep = os.path.join(TMP, "edited.jpg")
+    ed.save(ep, exif=with_thumbnail(Image.open(ph).getexif().tobytes(), th), qtables=Image.open(ph).quantization)
+    assert [x.rule_id for x in m.check_metadata("T1", doc(ep), "2026-10-20", photo=True)] == ["F-META-EXIF-THUMB"]
+    if not os.path.exists("data/demo/apps/APP-17.json"):
+        raise RuntimeError("run: python -m pramaan.synth.bundles  first")
+    injected = {("APP-10", "affidavit_2"), ("APP-16", "fire_cert"), ("APP-17", "campus_1.jpg")}
+    n = 0
+    for mp in sorted(glob.glob("data/demo/apps/*.json")):
+        a = Application(**json.load(open(mp)))
+        for s in a.documents:
+            if (a.app_id, s.slot) not in injected:
+                got = m.check_metadata(a.app_id, ingest(s.path, f"{a.app_id}-{s.slot}", s.slot), a.submitted_on); n += 1
+                assert got == [], (a.app_id, s.slot, [(x.rule_id, x.reason) for x in got])
+        for q in a.photos:
+            if (a.app_id, os.path.basename(q)) not in injected:
+                got = m.check_metadata(a.app_id, doc(q), a.submitted_on, photo=True); n += 1
+                assert got == [], (a.app_id, q, [(x.rule_id, x.reason) for x in got])
+    assert n > 100, n
+
 class _Skip(Exception):
     pass
 
 
-MODULE = {"signature": "forensics", "priority": "priority", "reuse": "reuse", "area": "rules", "issuer_webhook": "issuer_async", "retention": "audit", "masking": "privacy"}   # test name -> module in pramaan/
+MODULE = {"signature": "forensics", "priority": "priority", "reuse": "reuse", "area": "rules", "issuer_webhook": "issuer_async", "retention": "audit", "masking": "privacy",
+          "metadata": "metadata_forensics"}   # test name -> module in pramaan/
 
 
 TESTS = {"ingest": t_ingest, "classify_extract": t_classify_extract, "rules": t_rules, "crosscheck": t_crosscheck,
          "triage": t_triage, "audit": t_audit, "report": t_report, "pipeline": t_pipeline,
          "signature": t_signature, "priority": t_priority, "reuse": t_reuse,
          "area": t_area, "issuer_webhook": t_issuer_webhook,
-         "retention": t_retention, "masking": t_masking}
+         "retention": t_retention, "masking": t_masking,
+         "metadata": t_metadata}
 
 if __name__ == "__main__":
     want = sys.argv[1:] or list(TESTS)

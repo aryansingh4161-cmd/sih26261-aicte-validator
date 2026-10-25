@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import os
 import random
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Dict, List, Optional
 
 from reportlab.lib.colors import Color, black, white
@@ -358,11 +358,25 @@ def default_details(rng: random.Random, inst: Dict) -> Dict:
     }
 
 
+CREATED_FROM = {"eoa_letter": "printed_on", "affidavit_2": "sworn_on", "noc_format2": "noc_date", "fire_cert": "issue_date",
+                "structural_cert": "issue_date", "area_statement": "noc_date"}
+
+
 def render_pdf(doc_type: str, layout: str, inst: Dict, details: Dict, out_path: str,
                producer: str = "SYNTH-PORTAL Renderer 1.0", font_override: Optional[Dict[str, str]] = None) -> Dict:
     """Write one PDF. Returns {truth, tables, boxes (normalised), layout, doc_type, path}."""
     os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
-    P = Painter(out_path, layout, producer)
+    when = details.get(CREATED_FROM.get(doc_type, ""))          # synthetic timeline: file created on its printed date
+    old = os.environ.get("SOURCE_DATE_EPOCH")
+    if isinstance(when, date):
+        os.environ["SOURCE_DATE_EPOCH"] = str(int(datetime(when.year, when.month, when.day, 11, 0, tzinfo=timezone.utc).timestamp()))
+    try:
+        P = Painter(out_path, layout, producer)                 # reportlab reads SOURCE_DATE_EPOCH for CreationDate/ModDate
+    finally:
+        if old is None:
+            os.environ.pop("SOURCE_DATE_EPOCH", None)
+        else:
+            os.environ["SOURCE_DATE_EPOCH"] = old
     P.font_override = dict(font_override or {})
     truth, tables = BUILDERS[doc_type](P, inst, details, layout)
     P.finish()

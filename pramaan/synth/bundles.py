@@ -9,14 +9,15 @@ import copy
 import json
 import os
 import random
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
-import numpy as np
-from PIL import Image, ImageDraw
+from PIL import Image
 
 from . import content as C
 from . import docs as D
 from .demo_pki import can_sign, make_pki, sign_pdf
+from .pdf_edit import incremental_text_edit
+from .photos import edit_photo as _edit_photo, photo as _photo
 from .raster import jpeg_roundtrip, render_page, scan_effect
 from .tamper import apply_tamper
 
@@ -31,7 +32,7 @@ SCENARIOS = {
     "APP-07": (["name_mismatch", "intake_mismatch"], ["X-NAME", "X-INTAKE", "V-issuer_portal"], "human_review"),
     "APP-08": (["eoa_other_institute", "fee_unpaid"], ["X-PERMID", "R-REC-ter_paid"], "human_review"),
     "APP-09": (["photo_far", "photo_duplicate"], ["F-PHOTO-GPS", "F-PHOTO-DUPLICATE"], "human_review"),
-    "APP-10": (["stamp_50", "sworn_after_submit"], ["R-FLD-affidavit_2-stamp_value", "X-SWORN-AFTER-SUBMIT"], "human_review"),
+    "APP-10": (["stamp_50", "sworn_after_submit"], ["R-FLD-affidavit_2-stamp_value", "X-SWORN-AFTER-SUBMIT", "F-META-DATES"], "human_review"),
     "APP-11": (["fire_not_in_issuer_db"], [], "clear"),
     "APP-12": (["scanned_struct_tampered"], ["F-TAMPER"], "human_review"),
     # F8 reuse across applications: needs the source app processed first (sorted order does that)
@@ -39,26 +40,11 @@ SCENARIOS = {
     "APP-14": (["fire_no_reused_from_app03"], ["X-REUSE-CERT", "V-issuer_portal"], "human_review"),
     # F9: one room type below its per-room minimum (classroom, or the first norm row); expected rule set in build()
     "APP-15": (["area_below_norm"], ["R-AREA-classroom"], "return_for_rectification"),
+    # WK14 metadata forensics: an incremental update that rewrote the validity date; a photo edited in software
+    "APP-16": (["fire_incremental_edit"], ["F-META-REVISION-DIFF", "F-PDF-INCREMENTAL", "F-PDF-MODDATE", "V-issuer_portal"], "human_review"),
+    "APP-17": (["photo_edited_software"], ["F-META-EXIF-SOFTWARE", "F-META-EXIF-THUMB", "F-META-EXIF-DATES", "F-META-JPEG-QT"],
+               "human_review"),
 }
-
-
-def _photo(path, rng, lat, lon, seed_img=None):
-    a = np.zeros((480, 640, 3), np.uint8)
-    a[:240] = (rng.randint(120, 200), rng.randint(160, 220), 235)
-    a[240:] = (rng.randint(90, 140), rng.randint(110, 160), rng.randint(60, 100))
-    img = Image.fromarray(a); dr = ImageDraw.Draw(img)
-    for _ in range(4):
-        x, w, h = rng.randint(20, 520), rng.randint(60, 160), rng.randint(60, 180)
-        dr.rectangle([x, 240 - h, x + w, 300], fill=(rng.randint(150, 230),) * 3, outline=(40, 40, 40), width=3)
-        for k in range(3):
-            dr.rectangle([x + 10 + 30 * k, 250 - h + 20, x + 30 + 30 * k, 250 - h + 50], fill=(60, 90, 140))
-    img = seed_img or img
-    ex = Image.Exif()
-    def dms(v):
-        v = abs(v); d = int(v); m = int((v - d) * 60); return (float(d), float(m), round(((v - d) * 60 - m) * 60, 2))
-    ex[0x8825] = {1: "N" if lat >= 0 else "S", 2: dms(lat), 3: "E" if lon >= 0 else "W", 4: dms(lon)}
-    img.save(path, quality=90, exif=ex)
-    return img
 
 
 def _sidecar_from_pdf(pdf_path, img_path):
@@ -139,6 +125,12 @@ def build(out: str, today: date, seed: int = 11, scenarios: dict | None = None, 
             det["valid_until"] = today + timedelta(days=700)      # the forger pushed the date out
             render("fire_cert", fire_inst, det, producer="Generic PDF Editor 9.1 (synthetic)",
                    font_override={"valid_until": "Times-Roman" if layout != "B" else "Helvetica"})
+        elif "fire_incremental_edit" in defects:                 # issued with the true (expired) date, edited AFTER saving
+            real_valid = today - timedelta(days=25)
+            det["issue_date"] = real_valid - timedelta(days=365 * 3); det["valid_until"] = real_valid
+            fp = render("fire_cert", fire_inst, det)
+            incremental_text_edit(fp, C.fmt_dmy(real_valid), C.fmt_dmy(today + timedelta(days=700)),
+                                  datetime.combine(submitted - timedelta(days=3), datetime.min.time()).replace(hour=11))
         elif "missing_fire" not in defects:
             render("fire_cert", fire_inst)
         if "struct_short_validity" in defects:
@@ -155,7 +147,8 @@ def build(out: str, today: date, seed: int = 11, scenarios: dict | None = None, 
                 jp = os.path.join(ddir, "structural_cert_scan.jpg"); img.save(jp, quality=88)
                 _sidecar_from_pdf(p, jp); os.remove(p); docs["structural_cert"] = jp
         if signing and "affidavit_2" in docs:
-            sign_pdf(docs["affidavit_2"], docs["affidavit_2"], pki)
+            sign_pdf(docs["affidavit_2"], docs["affidavit_2"], pki,
+                     when=datetime.combine(det["sworn_on"], datetime.min.time()).replace(hour=12).astimezone())
         if "fire_cert" in docs and not {"fire_not_in_issuer_db", "fire_no_reused_from_app03"} & set(defects):
             fire_db[det["fire_no"]] = {"valid_until": real_valid.isoformat(), "institute_name": inst["institute_name"]}
         uni_db[det["noc_ref"]] = {"institute_name": inst["institute_name"]}
@@ -174,10 +167,13 @@ def build(out: str, today: date, seed: int = 11, scenarios: dict | None = None, 
             lat, lon = inst["latitude"] + r.uniform(-0.002, 0.002), inst["longitude"] + r.uniform(-0.002, 0.002)
             if "photo_far" in defects and k == 0:
                 lat += 0.45
-            pp = os.path.join(pdir, f"campus_{k + 1}.jpg"); im = _photo(pp, r, lat, lon); photos.append(pp)
+            pp = os.path.join(pdir, f"campus_{k + 1}.jpg"); photos.append(pp)
+            im = _photo(pp, r, lat, lon, taken=datetime.combine(submitted - timedelta(days=10 + k), datetime.min.time()).replace(hour=10))
         shared[app_id]["photo"] = photos[0]
         if "photo_reused_from_app09" in defects:            # same picture, re-tagged with this campus GPS
             _photo(photos[0], r, inst["latitude"], inst["longitude"], seed_img=Image.open(shared[reuse_from[app_id]]["photo"]).copy())
+        if "photo_edited_software" in defects:
+            _edit_photo(photos[0], datetime.combine(submitted - timedelta(days=10), datetime.min.time()).replace(hour=10))
         if "photo_duplicate" in defects:
             pp = os.path.join(pdir, "campus_3.jpg"); _photo(pp, r, inst["latitude"], inst["longitude"], seed_img=Image.open(photos[1]).copy()); photos.append(pp)
         man = {"app_id": app_id, "category": "eoa_existing_regular", "academic_year": inst["academic_year"], "permanent_id": pid,

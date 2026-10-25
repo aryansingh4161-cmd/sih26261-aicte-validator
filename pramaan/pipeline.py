@@ -18,13 +18,14 @@ from .classify_extract import classify_and_extract, load_specs
 from .crosscheck import run_crosscheck
 from .forensics import pdf_structure_checks, signature_check
 from .ingest import ingest
+from .metadata_forensics import check_metadata
 from .issuer import load_records, verify_document
 from .photo_check import check_photos
 from .priority import score as priority_score
 from .report import build_report
 from .reuse import check_reuse
 from .rules import run_rules
-from .schemas import DOC_TYPES, Application, ApplicationResult, Evidence, Finding
+from .schemas import DOC_TYPES, Application, ApplicationResult, DocumentRecord, Evidence, Finding
 from .tamper_model import available, tamper_check
 from .triage import assign_lane, make_alerts
 from .util import now_iso, sha256_file
@@ -101,6 +102,7 @@ def run_application(manifest_path: str, out_dir: str = "output", today: date | N
                                     evidence=[Evidence(doc_id=d.doc_id, page=1, text=d.filename)]))
         with _step(timings, "forensics"):
             findings += pdf_structure_checks(app.app_id, d, specs.get(d.doc_type, {}))
+            findings += check_metadata(app.app_id, d, app.submitted_on, specs_dir=specs_dir)
             if d.doc_type == "affidavit_2" or d.metadata.get("has_signature_field"):
                 vers.append(signature_check(d, trust))
             findings += tamper_check(app.app_id, d, weights, float(st.get("tamper_threshold", 0.5)))
@@ -125,6 +127,9 @@ def run_application(manifest_path: str, out_dir: str = "output", today: date | N
     if app.photos:
         with _step(timings, "photos"):
             findings += check_photos(app, today, float(st.get("photo_max_km", 1.0)), float(st.get("blur_threshold", 60.0)))
+            for p in app.photos:
+                pd = DocumentRecord(doc_id=f"photo:{os.path.basename(p)}", filename=os.path.basename(p), path=p, sha256="")
+                findings += check_metadata(app.app_id, pd, app.submitted_on, photo=True)
     seen: dict = {}
     for i, f in enumerate(findings):                       # make finding ids unique
         n = seen.get(f.finding_id, 0); seen[f.finding_id] = n + 1

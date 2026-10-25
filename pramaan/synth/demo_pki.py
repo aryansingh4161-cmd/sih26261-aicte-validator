@@ -51,12 +51,25 @@ def can_sign() -> bool:
         return False
 
 
-def sign_pdf(src: str, dst: str, pki: dict) -> None:
+def sign_pdf(src: str, dst: str, pki: dict, when: dt.datetime | None = None) -> None:
+    """when: synthetic timeline date written as the PDF Info /ModDate (pyHanko would write 'now'). The CMS signing time
+    stays the real clock, so signature validation is unchanged."""
     from pyhanko.pdf_utils.incremental_writer import IncrementalPdfFileWriter
+    from pyhanko.pdf_utils.metadata import info as _info
     from pyhanko.sign import signers
     signer = signers.SimpleSigner.load(pki["key"], pki["cert"], ca_chain_files=(pki["root"],))
-    with open(src, "rb") as inf:
-        w = IncrementalPdfFileWriter(inf)
-        with open(dst + ".tmp", "wb") as outf:
-            signers.sign_pdf(w, signers.PdfSignatureMetadata(field_name="Signature1"), signer=signer, output=outf)
+    real = _info.datetime
+    if when is not None:
+        class _Frozen(dt.datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return when.astimezone(tz) if tz else when
+        _info.datetime = _Frozen
+    try:
+        with open(src, "rb") as inf:
+            w = IncrementalPdfFileWriter(inf)
+            with open(dst + ".tmp", "wb") as outf:
+                signers.sign_pdf(w, signers.PdfSignatureMetadata(field_name="Signature1"), signer=signer, output=outf)
+    finally:
+        _info.datetime = real
     os.replace(dst + ".tmp", dst)
