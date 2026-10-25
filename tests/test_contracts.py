@@ -124,6 +124,8 @@ def t_signature(m):
     for path, roots, want in cases:
         r = m.signature_check(doc(path), roots)
         assert r.status == want and r.method == "digital_signature" and r.mock is False, (path, roots, r.status, r.note)
+        if path == src:
+            assert "no digital signature found" in r.note, r.note
 
 
 class _Skip(Exception):

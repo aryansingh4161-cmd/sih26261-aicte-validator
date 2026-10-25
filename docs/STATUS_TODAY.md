@@ -26,3 +26,9 @@
 - Measured (/tmp/tiny, 16/8/8, seed 1, 1 epoch bs 2): train 62 s on CPU, wrote /tmp/t.pt; eval wrote /tmp/r.csv incl. test_classical_inpaint (n=8). AUCs (0.0-0.87) are noise on n=8 after 1 epoch - smoke only, NOT results.
 - tamper_check: loads weights, runs on a scanned image (threshold 0 -> 1 F-TAMPER finding, lane human_review, heatmap saved); [] for text-layer PDFs and for missing weights, as designed.
 - Note: train_unet downloads ImageNet encoder weights from the HF Hub on first run (needs internet on Colab). --method ai not tried (not asked).
+
+## WK1 check 2 - signatures (pyHanko 0.38.0)
+- Changed: tests/test_contracts.py t_signature now also asserts the unsigned case note contains "no digital signature found" (CONTRACTS 6). demo_pki.py / forensics.py unchanged (no bug found).
+- Tests (measured): bundles --today 2026-10-26 -> "signed affidavits: True"; t_signature 4/4 cases PASS (verified / mismatch_detected / manual_review_required x2); test_synth + test_contracts 9/9 PASS.
+- Numbers (measured, output/*.result.json): pipeline 12/12 apps; APP-01 clear (0 findings), APP-11 clear (0 findings, 1 pending_verification alert from the injected fire_not_in_issuer_db = as designed), APP-12 clear; 0.14-0.24 s/app (APP-01 2.13 s incl. first-run warm-up).
+- The earlier ASSUMPTION "APP-01/APP-11 clear once signed" is now MEASURED. Teammates: pull main.
