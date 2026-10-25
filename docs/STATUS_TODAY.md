@@ -59,3 +59,8 @@
 - Final run_eval (measured, eval/results.csv, synthetic): extract.field_acc.all 0.9974 (n=1920); extract.type_acc.all 1.0 (n=360); demo.recall 1.0 (n=19); demo.unexpected_findings 0 (n=15); demo.lane_agreement 0.9333 (n=15); demo.seconds_per_app 0.39.
 - UNTESTED / BLOCKED: data/models/tamper_unet.pt is NOT present, so APP-12 F-TAMPER + heatmap not confirmed (APP-12 = clear, the one lane miss). The F-TAMPER path itself was exercised in WK1 with smoke weights.
 - Teammates: ARYAN copy tamper_unet.pt from Drive to data/models/, then: python -m pramaan.pipeline data/demo/apps/APP-12.json --today 2026-10-26 (expect F-TAMPER, heatmap in output/heatmaps/) and re-run run_eval (lane agreement should become 15/15).
+
+## Fix: report.py restored (after 394f5cd "report look")
+- Changed: pramaan/report.py restored to the c29c3aa version (byte-identical). 394f5cd had replaced the whole file with the two shell lines "cd ~/Documents/sih26261-aicte-validator" / "pbpaste > pramaan/report.py" -> SyntaxError on import (pipeline, dashboard, run_eval all broken).
+- Tests (measured): test_contracts report PASS; test_synth ALL PASSED; test_contracts 12/12 PASS.
+- ARYAN: the pasted "report look" content was never committed (only the shell lines were). To apply it, run the two lines IN THE TERMINAL (not in the editor), then python -m tests.test_contracts report before committing. The .gitignore duplicate config/trust/ line from 394f5cd is harmless and left as is.
