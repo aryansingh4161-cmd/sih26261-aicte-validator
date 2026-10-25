@@ -253,3 +253,7 @@ config/trust/
 
 # scale test output (tools/scale_test.py), regenerated
 data/scale/
+
+# real files (never commit)
+real_photos/
+.DS_Store

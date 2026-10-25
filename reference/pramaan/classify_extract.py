@@ -68,19 +68,54 @@ def _field(doc: DocumentRecord, name: str, fs: dict):
 
 def _rows_from_lines(doc: DocumentRecord, ts: dict) -> list:
     """Fallback for borderless tables: lines ending in one or two numbers after the header line."""
-    two = "intake_prev" in ts["columns"]
-    pat = re.compile(r"^(.*?)\s+(\d{1,4})\s+(\d{1,4})$" if two else r"^(.*?)\s+(\d{1,4})$")
+    cols = list(ts["columns"])                      # first column = text, the rest = numbers, in spec order
+    pat = re.compile(r"^(.*?)" + r"\s+(\d{1,4})" * (len(cols) - 1) + "$")
     rows = []
     for b in doc.blocks:
         m = pat.match(b.text.strip())
         if m and not re.search(r"\d{4}-\d{2}", b.text):
-            r = {"course": m.group(1).strip()}
-            if two:
-                r.update(intake_prev=m.group(2), intake_curr=m.group(3))
-            else:
-                r["intake_curr"] = m.group(2)
-            rows.append(r)
+            rows.append({c: m.group(i + 1).strip() for i, c in enumerate(cols)})
     return rows
+
+
+def _word_tables(page) -> list:
+    """Borderless tables from word positions: header cells = runs of words split by gaps > 5 pt; every word below goes to
+    the column whose header starts left of it; lines with a number in the last column start a row, lines without one
+    continue the row above (wrapped cells). Lines before the first row extend the header. Cell text is left-aligned, so a
+    line whose words do not start at their column's start (running text below the table) ends it."""
+    lines: list = []
+    for w in sorted(page.extract_words(), key=lambda w: (round(w["top"]), w["x0"])):
+        if lines and abs(w["top"] - lines[-1][0]["top"]) < 2:
+            lines[-1].append(w)
+        else:
+            lines.append([w])
+    out = []
+    for hi, hl in enumerate(lines):
+        starts = [w["x0"] for k, w in enumerate(hl) if k == 0 or w["x0"] - hl[k - 1]["x1"] > 5]
+        if len(starts) < 2:
+            continue
+        col = lambda w: max([i for i, s in enumerate(starts) if s <= w["x0"] + 3] or [0])
+        hdr, rows, prev = [[] for _ in starts], [], hl
+        for ln in lines[hi + 1:]:
+            cells, first = [[] for _ in starts], {}
+            for w in ln:
+                cells[col(w)].append(w["text"]); first.setdefault(col(w), w["x0"])
+            if ln[0]["top"] - prev[0]["bottom"] > 3 * (prev[0]["bottom"] - prev[0]["top"]) or \
+                    any(abs(x - starts[i]) > 2 for i, x in first.items()):
+                break
+            if re.fullmatch(r"\d{1,5}", " ".join(cells[-1])):
+                rows.append(cells)
+            elif rows:
+                for i, c in enumerate(cells):
+                    rows[-1][i] += c
+            else:
+                for i, c in enumerate(cells):
+                    hdr[i] += c
+            prev = ln
+        if rows:
+            head = [" ".join([w["text"] for w in hl if col(w) == i] + hdr[i]) for i in range(len(starts))]
+            out.append([head] + [[" ".join(c) for c in r] for r in rows])
+    return out
 
 
 def _tables(doc: DocumentRecord, spec: dict) -> dict:
@@ -92,10 +127,11 @@ def _tables(doc: DocumentRecord, spec: dict) -> dict:
         import pdfplumber
         with pdfplumber.open(doc.path) as pdf:
             raw = [t for p in pdf.pages for t in p.extract_tables()]
+            words = [t for p in pdf.pages for t in _word_tables(p)] if not raw else []
     except Exception:
         return out
     for tname, ts in tspec.items():
-        for t in raw:
+        for t in raw + words:
             if not t or len(t) < 2:
                 continue
             hdr = [(c or "").replace("\n", " ").lower() for c in t[0]]

@@ -340,12 +340,50 @@ def t_metadata(m):
                 assert got == [], (a.app_id, q, [(x.rule_id, x.reason) for x in got])
     assert n > 100, n
 
+
+def t_table_borderless(m):
+    """classify_extract (WK15 regression): layout B (no grid lines) EoA table with wrapped Level / Program / University cells.
+    Before the fix the course came out as 'POST MBA Sample' (APP-17) -> X-PROG-NOT-APPROVED."""
+    from pramaan.ingest import ingest
+    from pramaan.util import norm_name
+    for k in range(3):                                          # fresh synthetic layout-B letters
+        rng = random.Random(500 + k); inst = C.make_institute(rng); det = D.default_details(rng, inst)
+        r = D.render_pdf("eoa_letter", "B", inst, det, os.path.join(TMP, f"eoaB{k}.pdf"))
+        got = m.classify_and_extract(ingest(r["path"], "T1-eoa_letter")).tables.get("programs")
+        assert [{c: norm_name(v) for c, v in x.items()} for x in got] == [{c: norm_name(v) for c, v in x.items()} for x in r["tables"]["programs"]], got
+    p = "data/demo/docs/APP-17/eoa_letter.pdf"                  # the exact letter from the bug report
+    if not os.path.exists(p):
+        raise RuntimeError("run: python -m pramaan.synth.bundles  first")
+    got = m.classify_and_extract(ingest(p, "APP-17-eoa_letter")).tables["programs"]
+    assert [x["course"] for x in got] == ["CIVIL ENGINEERING", "MBA"] and all(x["intake_curr"] == "120" for x in got), got
+
+
+def t_reuse_photo_strict(m):
+    """reuse (WK15): two DIFFERENT synthetic campus photos -> no X-REUSE-PHOTO; a re-saved JPEG copy -> X-REUSE-PHOTO."""
+    from PIL import Image
+    from pramaan.synth.photos import photo
+    db = os.path.join(TMP, "reuse_strict.db")
+    if os.path.exists(db):
+        os.remove(db)
+    p1, p2, p3 = (os.path.join(TMP, f"rs{i}.jpg") for i in range(3))
+    photo(p1, random.Random(11), 28.6, 77.2); photo(p2, random.Random(12), 28.6, 77.2)
+    Image.open(p1).convert("RGB").save(p3, quality=60)                     # re-saved copy of p1: different bytes
+    assert open(p1, "rb").read() != open(p3, "rb").read()
+    a = APP.model_copy(update={"app_id": "RA", "photos": [p1]})
+    b = APP.model_copy(update={"app_id": "RB", "photos": [p2]})
+    c = APP.model_copy(update={"app_id": "RC", "photos": [p3]})
+    assert m.check_reuse(a, [], db) == []
+    assert [f.rule_id for f in m.check_reuse(b, [], db)] == []              # unrelated photo: no match
+    out = m.check_reuse(c, [], db)
+    assert [f.rule_id for f in out] == ["X-REUSE-PHOTO"] and "RA" in out[0].evidence[0].text, [(f.rule_id, f.reason) for f in out]
+
 class _Skip(Exception):
     pass
 
 
 MODULE = {"signature": "forensics", "priority": "priority", "reuse": "reuse", "area": "rules", "issuer_webhook": "issuer_async", "retention": "audit", "masking": "privacy",
-          "metadata": "metadata_forensics"}   # test name -> module in pramaan/
+          "metadata": "metadata_forensics", "table_borderless": "classify_extract",
+          "reuse_photo_strict": "reuse"}   # test name -> module in pramaan/
 
 
 TESTS = {"ingest": t_ingest, "classify_extract": t_classify_extract, "rules": t_rules, "crosscheck": t_crosscheck,
@@ -353,7 +391,8 @@ TESTS = {"ingest": t_ingest, "classify_extract": t_classify_extract, "rules": t_
          "signature": t_signature, "priority": t_priority, "reuse": t_reuse,
          "area": t_area, "issuer_webhook": t_issuer_webhook,
          "retention": t_retention, "masking": t_masking,
-         "metadata": t_metadata}
+         "metadata": t_metadata, "table_borderless": t_table_borderless,
+         "reuse_photo_strict": t_reuse_photo_strict}
 
 if __name__ == "__main__":
     want = sys.argv[1:] or list(TESTS)

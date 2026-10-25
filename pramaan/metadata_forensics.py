@@ -137,11 +137,14 @@ def _img(app_id, doc, submitted_on, photo) -> list[Finding]:
     from PIL import Image
     out, img = [], Image.open(doc.path)
     tags = exif_tags(img)
-    sw = " / ".join(t for t in (tags["software"], tags["processing"]) if t)
+    with open(doc.path, "rb") as fh:                         # editors such as Canva name themselves in XMP, not EXIF (WK15)
+        m = re.search(rb"xmp:CreatorTool(?:>|=\")([^<\"]{1,80})", fh.read(512 * 1024))
+    xmp_tool = m.group(1).decode("utf-8", "replace").strip() if m else None
+    sw = " / ".join(t for t in (tags["software"], tags["processing"], xmp_tool) if t)
     if sw and any(e in sw.lower() for e in EDITORS):
         out.append(_f(app_id, doc, "F-META-EXIF-SOFTWARE", "Image was saved by editing software",
-                      f"EXIF Software says '{sw[:80]}'.", "medium", [Evidence(doc_id=doc.doc_id, page=1, text=f"EXIF Software: {sw}"[:200])],
-                      0.8, photo))
+                      f"EXIF Software / XMP CreatorTool says '{sw[:80]}'.", "medium",
+                      [Evidence(doc_id=doc.doc_id, page=1, text=f"Software: {sw}"[:200])], 0.8, photo))
     th = exif_thumbnail(img)
     if th:
         diff = thumb_diff(img, th)

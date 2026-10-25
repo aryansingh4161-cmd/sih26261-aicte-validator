@@ -3,6 +3,7 @@ camera-style quantisation tables) and a simulated software edit. SYNTHETIC only.
 from __future__ import annotations
 
 import io
+import random
 from datetime import datetime, timedelta
 
 import numpy as np
@@ -11,18 +12,45 @@ from PIL import Image, ImageDraw
 from ..image_meta import camera_qtables, exif_thumbnail, with_thumbnail
 
 
+def scene(r: random.Random, W: int = 640, H: int = 480) -> Image.Image:
+    """A varied synthetic campus scene: random horizon, sky gradient, textured ground, 1-6 coloured buildings with
+    window grids and optional roofs, trees, a road, sensor noise. Unrelated scenes must not look like near-duplicates."""
+    hz = r.randint(int(H * 0.3), int(H * 0.7))
+    top, bot = np.array([r.randint(60, 200), r.randint(90, 210), r.randint(150, 255)]), np.array([r.randint(150, 255)] * 2 + [r.randint(170, 255)])
+    t = np.linspace(0, 1, hz)[:, None, None]
+    a = np.zeros((H, W, 3), np.float32)
+    a[:hz] = top * (1 - t) + bot * t
+    g = np.array([r.randint(40, 150), r.randint(60, 170), r.randint(20, 110)], np.float32)
+    rs = np.random.default_rng(r.randint(0, 2**31))
+    a[hz:] = g + rs.normal(0, r.uniform(6, 20), (H - hz, W, 1))
+    img = Image.fromarray(np.clip(a, 0, 255).astype(np.uint8)); dr = ImageDraw.Draw(img)
+    if r.random() < 0.6:                                         # a road / path
+        x = r.randint(0, W); dr.polygon([(x - 20, hz), (x + 20, hz), (x + r.randint(80, 260), H), (x - r.randint(80, 260), H)],
+                                        fill=(r.randint(70, 130),) * 3)
+    for _ in range(r.randint(1, 6)):
+        w, h = r.randint(50, 240), r.randint(40, int(hz * 0.9))
+        x, base = r.randint(-30, W - 30), hz + r.randint(0, 40)
+        col = tuple(r.randint(90, 240) for _ in range(3))
+        dr.rectangle([x, base - h, x + w, base], fill=col, outline=tuple(max(0, c - 70) for c in col), width=r.randint(1, 4))
+        rows, cols = r.randint(1, max(1, h // 30)), r.randint(1, max(1, w // 28))
+        wc = (r.randint(30, 120), r.randint(60, 140), r.randint(100, 200))
+        for i in range(rows):
+            for j in range(cols):
+                x0, y0 = x + 6 + j * (w - 8) // cols, base - h + 8 + i * (h - 12) // rows
+                dr.rectangle([x0, y0, x0 + max(4, (w - 8) // cols - 8), y0 + max(4, (h - 12) // rows - 10)], fill=wc)
+        if r.random() < 0.4:
+            dr.polygon([(x - 6, base - h), (x + w + 6, base - h), (x + w // 2, base - h - r.randint(15, 60))],
+                       fill=tuple(r.randint(80, 180) for _ in range(3)))
+    for _ in range(r.randint(0, 6)):
+        cx, cy, rad = r.randint(0, W), hz + r.randint(-10, 60), r.randint(12, 45)
+        dr.ellipse([cx - rad, cy - 2 * rad, cx + rad, cy], fill=(r.randint(20, 70), r.randint(80, 150), r.randint(20, 70)))
+    a = np.asarray(img, np.float32) + rs.normal(0, r.uniform(2, 7), (H, W, 3))
+    return Image.fromarray(np.clip(a, 0, 255).astype(np.uint8))
+
+
 def photo(path, rng, lat, lon, seed_img=None, taken: datetime | None = None):
     """Synthetic CAMERA photo: GPS + Make/Model + DateTimeOriginal + embedded thumbnail + camera-style JPEG tables."""
-    a = np.zeros((480, 640, 3), np.uint8)
-    a[:240] = (rng.randint(120, 200), rng.randint(160, 220), 235)
-    a[240:] = (rng.randint(90, 140), rng.randint(110, 160), rng.randint(60, 100))
-    img = Image.fromarray(a); dr = ImageDraw.Draw(img)
-    for _ in range(4):
-        x, w, h = rng.randint(20, 520), rng.randint(60, 160), rng.randint(60, 180)
-        dr.rectangle([x, 240 - h, x + w, 300], fill=(rng.randint(150, 230),) * 3, outline=(40, 40, 40), width=3)
-        for k in range(3):
-            dr.rectangle([x + 10 + 30 * k, 250 - h + 20, x + 30 + 30 * k, 250 - h + 50], fill=(60, 90, 140))
-    img = seed_img or img
+    img = seed_img or scene(random.Random(rng.random()))
     ex = Image.Exif()
     def dms(v):
         v = abs(v); d = int(v); m = int((v - d) * 60); return (float(d), float(m), round(((v - d) * 60 - m) * 60, 2))

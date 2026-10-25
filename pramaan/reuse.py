@@ -1,20 +1,41 @@
 """F8 reuse across applications. check_reuse(app, docs, index_db) -> list[Finding].
-A small SQLite index of every application processed: photo perceptual hash (ahash from photo_check),
-document sha256 and certificate numbers (certificate_no, ref_no, stamp_no). An application is compared only
+A small SQLite index of every application processed: photos (sha256, perceptual hash = ahash from photo_check, and a
+64x64 greyscale copy), document sha256 and certificate numbers (certificate_no, ref_no, stamp_no). An application is compared only
 with applications FIRST indexed before it, so re-running any application gives the same answer and never
-matches itself. Rule ids X-REUSE-PHOTO / X-REUSE-CERT, lane human_review. OWNER: Aryan."""
+matches itself. A photo match needs the SAME FILE (sha256) or BOTH a close ahash AND a small 64x64 mean-abs-diff
+(WK15: ahash alone matched unrelated look-alike photos). Rule ids X-REUSE-PHOTO / X-REUSE-CERT, lane human_review. OWNER: Aryan."""
 from __future__ import annotations
 
+import hashlib
 import os
 import sqlite3
 
+import numpy as np
 from PIL import Image
 
 from .photo_check import ahash
 from .schemas import Application, DocumentRecord, Evidence, Finding
 
 CERT_FIELDS = ("certificate_no", "ref_no", "stamp_no")
-PHOTO_MAX_BITS = 6                 # same tolerance as photo_check duplicate test
+# Chosen on the demo photos (WK15, n=35 photos, 593 unrelated pairs): re-saved / resized / brightness / contrast copies
+# <= 0.025 and <= 16 bits; closest unrelated pair 0.205 (11 bits). A 3% crop (0.154) is NOT caught (margin too thin).
+PHOTO_MAX_BITS = 20                # ahash (256 bits) distance: a loose first filter only
+PHOTO_MAX_MAD = 0.10               # mean abs diff of the 64x64 greyscale images after brightness/contrast normalisation
+
+
+def photo_signature(path: str) -> str:
+    """'<ahash hex>|<sha256>|<64x64 grey as hex>' (stored in the index)."""
+    img = Image.open(path)
+    sha = hashlib.sha256(open(path, "rb").read()).hexdigest()
+    return f"{ahash(img):x}|{sha}|{np.asarray(img.convert('L').resize((64, 64)), dtype=np.uint8).tobytes().hex()}"
+
+
+def photo_distance(a: str, b: str) -> tuple[bool, int, float]:
+    """(same file, ahash bits, normalised mean abs diff) between two signatures. Each 64x64 grey image is z-scored
+    first, so a brightness or contrast change does not count as a difference."""
+    (ha, sa, ga), (hb, sb, gb) = a.split("|"), b.split("|")
+    z = lambda h: (lambda v: (v - v.mean()) / (v.std() + 1e-6))(np.frombuffer(bytes.fromhex(h), np.uint8).astype(float))
+    return sa == sb, bin(int(ha, 16) ^ int(hb, 16)).count("1"), float(abs(z(ga) - z(gb)).mean())
 
 
 def _db(path: str) -> sqlite3.Connection:
@@ -36,7 +57,7 @@ def _items(app: Application, docs: list[DocumentRecord]) -> list[tuple[str, str,
                 out.append(("cert", f"{d.doc_type}:{f}:{v.value.strip().upper()}", d.doc_id))
     for p in app.photos:
         try:
-            out.append(("photo", format(ahash(Image.open(p)), "x"), os.path.basename(p)))
+            out.append(("photo", photo_signature(p), os.path.basename(p)))
         except Exception:
             continue
     return out
@@ -58,8 +79,13 @@ def check_reuse(app: Application, docs: list[DocumentRecord], index_db: str = "o
         out, seen = [], set()
         for kind, key, ref in items:
             if kind == "photo":
-                me = int(key, 16)
-                hits = [(a, r) for a, k, r in c.execute(earlier, (seq, "photo")) if bin(me ^ int(k, 16)).count("1") <= PHOTO_MAX_BITS]
+                hits = []
+                for a, k, r in c.execute(earlier, (seq, "photo")):
+                    if k.count("|") != 2:                      # index row from before WK15 (ahash only): not comparable
+                        continue
+                    same, bits, mad = photo_distance(key, k)
+                    if same or (bits <= PHOTO_MAX_BITS and mad <= PHOTO_MAX_MAD):
+                        hits.append((a, f"{r}; {'same file' if same else f'ahash {bits} bits, difference {mad:.3f}'}"))
             else:
                 hits = [(a, r) for a, k, r in c.execute(earlier, (seq, kind)) if k == key]
             rule = "X-REUSE-PHOTO" if kind == "photo" else "X-REUSE-CERT"
