@@ -93,3 +93,8 @@
 - Note: before WK11 no personal values were in the audit log or HTML (only field names), so masking is a guard plus the new masked "values" in "document read" rows. Older rows are unchanged (hash chain).
 - OPEN: SAFEGUARDS.md headings are OUR working names (ASSUMPTION) - the PS's exact five safeguards are not in the repo; paste them in.
 - UNTESTED: retention --apply on the real output/ (only in the test dir); encryption at rest (not implemented).
+
+## WK12 one-command demo
+- Changed: NEW pramaan/demo.py (python -m pramaan.demo [--today] [--no-dashboard] [--quick] [--port]): environment check (pyHanko, torch+smp, weights, EasyOCR, Streamlit), builds bundles, pipeline on all demo apps, lanes table, run_eval into output/demo_eval.csv (eval/results.csv NOT touched), key metrics, starts the dashboard. README_V1.md "Reproduce in one command" (Mac/Linux + Windows PowerShell).
+- Tests (measured): FRESH CLONE in /tmp/pramaan_fresh, Python 3.11.9 venv, only requirements.txt (no torch, no EasyOCR, no weights): demo --no-dashboard rc 0 in 41 s, optional parts reported as skipped, 15 apps, lanes identical to the main venv; run_eval field_acc 0.9974 (n=1920), recall 1.0 (n=19), unexpected 0, lane agreement 0.9333, 0.48 s/app; dashboard started by the demo served (200, health ok); AppTest both pages 0 exceptions; test_synth + test_contracts 15/15 PASS; git status clean after the run.
+- UNTESTED: Windows (no Windows machine here; the commands avoid shell globs and use sys.executable, but PowerShell steps are unverified); a GitHub clone (tested with a local git clone of the same commit).
