@@ -158,3 +158,24 @@
 - Added as provided (72 rows, label measured; its source_file column says eval/results.csv = the Kaggle run's own file, not ours). Image threshold in that run "chosen on val = 0.000" (see WK16: the pipeline uses 0.136 for FPR ~5%).
 - Key numbers (measured, synthetic, n=300 per OOD/ID set, 150 per inpaint set): U-Net image AUC test_id 0.993 [0.986-0.999], test_ood_layout 0.759, test_ood_tamper 0.738, test_ood_both 0.627, test_ai_inpaint 0.597, test_classical_inpaint 0.516 [0.416-0.612]; pixel F1 test_id 0.940, ood_both 0.394. ELA baseline image AUC 0.43-0.60 on all sets.
 - Read: strong in-distribution, much weaker on unseen layouts / tamper types, and near chance on inpainting (classical inpaint CI includes 0.5). Say exactly this on the deck; do not quote test_id alone.
+
+## FINAL SUMMARY (Sun 25 Oct, end of day) - all numbers measured on SYNTHETIC data unless stated; issuer checks MOCK
+- Modules: no owner has replaced a module yet (all come from reference/ per the WK0b team decision).
+  reference, unchanged: ingest, crosscheck, forensics, issuer, photo_check, triage.
+  reference + worker edits (reference/ synced): audit (masking), classify_extract (generic + word-position borderless tables), rules (area_min).
+  reference + worker edits (reference/ NOT synced - do not run use_reference on these): pipeline (reuse, priority, metadata, timings, trust_dir), report (priority, masking).
+  new (worker): priority, reuse, privacy, metadata_forensics, image_meta, issuer_async, demo; synth/pdf_edit, synth/photos; tools/ (norms_to_yaml, ocr_sidecar, scale_test, scan_benchmark, retention, access_log_export, mock_issuer_sender).
+  starter (Aryan/Manviraj): schemas (+CONTRACTS 8 changes), util, tamper_model, model/*, synth/* ; dashboard/app.py + pages/2_Analytics.py.
+- Tests: test_synth ALL PASSED; test_contracts 18/18 PASS, 0 SKIP (Python 3.14.6; fresh clone also passed on 3.11.9 in WK12).
+- Demo lanes: 01 clear | 02-05 return_for_rectification | 06-10 human_review | 11 clear | 12 human_review (F-TAMPER) | 13-14 human_review | 15 return_for_rectification | 16-17 human_review.
+- run_eval (eval/results.csv, latest): extract.field_acc.all 0.9974 (n=1920) | extract.type_acc.all 1.0 (n=360) | demo.recall 1.0 (n=29) | demo.unexpected_findings 0 (n=17) | demo.lane_agreement 1.0 (n=17) | demo.seconds_per_app 0.62 (0.41 median without the tamper model, WK15).
+- Model (eval/results_model_kaggle.csv): U-Net image AUC test_id 0.993, ood_layout 0.759, ood_tamper 0.738, ood_both 0.627, ai_inpaint 0.597, classical_inpaint 0.516 (ELA baseline 0.43-0.60). Pipeline threshold 0.136 = FPR 5.0% / TPR 98.1% on the regenerated val split (val AUC 0.985 here vs 1.0 in the checkpoint).
+- Scans (EasyOCR, WK13): field accuracy light 0.825 / medium 0.811 / heavy 0.647 (n=360 each). Scale (WK15, N=200): mean 0.35 s / p95 0.48 s per app, 173 apps/min, peak 433 MB.
+- Real files (not committed): 8 public PDFs -> 0/8 false alarms (weak: no XMP, no revisions, few dates); 5 real photos -> 1/5 false alarm (EXIF thumbnail threshold too tight), edited copies 2/2 flagged (Canva strong, Preview weak only).
+- STILL UNTESTED: Windows; real browser clicks in the dashboard (only AppTest); SSO / real auth (demo users); real issuer APIs (all MOCK); encryption at rest; retention --apply on real output/; F-META-REVISION-DIFF and XMP on any REAL edited PDF; extraction accuracy on scans of REAL letters (only presence checked); area norms are PLACEHOLDERS; tamper model on real scans; X-REUSE-CERT false matches on short certificate numbers (19 at N=200); SAFEGUARDS.md headings are working names.
+- NEXT 5 (most important first):
+  1) Saanvi: area norms sheet -> config/area_norms.csv -> python -m tools.norms_to_yaml (replaces PLACEHOLDER rows); paste the PS's exact five safeguards into docs/SAFEGUARDS.md.
+  2) Jasraj: OCR-tolerant spec patterns from the WK13 top-5 list (ref_no '/', 'No.:', leading 'I,', small words, ';'), then re-run tools/scan_benchmark.py; fix institute_name / approval_date on the real EoA letters (eval/extraction_real.py with the answer key).
+  3) Manviraj: explain val AUC 1.0 vs 0.985; improve OOD + inpainting (AUC 0.52-0.76) before the deck quotes the model; deck must show all test sets, not test_id alone.
+  4) Reuse owner: ignore certificate numbers shorter than ~5 characters (X-REUSE-CERT false matches); raise EXIF-thumbnail threshold (~4) after more real photos.
+  5) Aryan: sync reference/ for pipeline.py + report.py, delete output/reuse.db + output/audit.db before the demo, run python -m pramaan.demo on the demo laptop (and Windows if available).
