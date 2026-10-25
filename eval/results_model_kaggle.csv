@@ -1,0 +1,73 @@
+metric_id,metric,value,unit,n,set,label,source_file,notes
+ela_baseline.auc.test_id,ela_baseline image AUC,0.6049,auc,300,test_id,measured,eval/results.csv,model=ela_baseline; thr chosen on val=18.467; 95% CI by bootstrap
+ela_baseline.auc_lo.test_id,ela_baseline AUC CI low,0.5413,auc,300,test_id,measured,eval/results.csv,model=ela_baseline; thr chosen on val=18.467; 95% CI by bootstrap
+ela_baseline.auc_hi.test_id,ela_baseline AUC CI high,0.666,auc,300,test_id,measured,eval/results.csv,model=ela_baseline; thr chosen on val=18.467; 95% CI by bootstrap
+ela_baseline.f1.test_id,ela_baseline image F1,0.6879,f1,300,test_id,measured,eval/results.csv,model=ela_baseline; thr chosen on val=18.467; 95% CI by bootstrap
+ela_baseline.pixel_f1.test_id,ela_baseline pixel F1,0.0211,f1,300,test_id,measured,eval/results.csv,model=ela_baseline; thr chosen on val=18.467; 95% CI by bootstrap
+ela_baseline.iou.test_id,ela_baseline pixel IoU,0.0107,iou,300,test_id,measured,eval/results.csv,model=ela_baseline; thr chosen on val=18.467; 95% CI by bootstrap
+ela_baseline.auc.test_ood_layout,ela_baseline image AUC,0.5226,auc,300,test_ood_layout,measured,eval/results.csv,model=ela_baseline; thr chosen on val=18.467; 95% CI by bootstrap
+ela_baseline.auc_lo.test_ood_layout,ela_baseline AUC CI low,0.4586,auc,300,test_ood_layout,measured,eval/results.csv,model=ela_baseline; thr chosen on val=18.467; 95% CI by bootstrap
+ela_baseline.auc_hi.test_ood_layout,ela_baseline AUC CI high,0.5868,auc,300,test_ood_layout,measured,eval/results.csv,model=ela_baseline; thr chosen on val=18.467; 95% CI by bootstrap
+ela_baseline.f1.test_ood_layout,ela_baseline image F1,0.596,f1,300,test_ood_layout,measured,eval/results.csv,model=ela_baseline; thr chosen on val=18.467; 95% CI by bootstrap
+ela_baseline.pixel_f1.test_ood_layout,ela_baseline pixel F1,0.0253,f1,300,test_ood_layout,measured,eval/results.csv,model=ela_baseline; thr chosen on val=18.467; 95% CI by bootstrap
+ela_baseline.iou.test_ood_layout,ela_baseline pixel IoU,0.0128,iou,300,test_ood_layout,measured,eval/results.csv,model=ela_baseline; thr chosen on val=18.467; 95% CI by bootstrap
+ela_baseline.auc.test_ood_tamper,ela_baseline image AUC,0.5581,auc,300,test_ood_tamper,measured,eval/results.csv,model=ela_baseline; thr chosen on val=18.467; 95% CI by bootstrap
+ela_baseline.auc_lo.test_ood_tamper,ela_baseline AUC CI low,0.4875,auc,300,test_ood_tamper,measured,eval/results.csv,model=ela_baseline; thr chosen on val=18.467; 95% CI by bootstrap
+ela_baseline.auc_hi.test_ood_tamper,ela_baseline AUC CI high,0.6254,auc,300,test_ood_tamper,measured,eval/results.csv,model=ela_baseline; thr chosen on val=18.467; 95% CI by bootstrap
+ela_baseline.f1.test_ood_tamper,ela_baseline image F1,0.659,f1,300,test_ood_tamper,measured,eval/results.csv,model=ela_baseline; thr chosen on val=18.467; 95% CI by bootstrap
+ela_baseline.pixel_f1.test_ood_tamper,ela_baseline pixel F1,0.0173,f1,300,test_ood_tamper,measured,eval/results.csv,model=ela_baseline; thr chosen on val=18.467; 95% CI by bootstrap
+ela_baseline.iou.test_ood_tamper,ela_baseline pixel IoU,0.0087,iou,300,test_ood_tamper,measured,eval/results.csv,model=ela_baseline; thr chosen on val=18.467; 95% CI by bootstrap
+ela_baseline.auc.test_ood_both,ela_baseline image AUC,0.539,auc,300,test_ood_both,measured,eval/results.csv,model=ela_baseline; thr chosen on val=18.467; 95% CI by bootstrap
+ela_baseline.auc_lo.test_ood_both,ela_baseline AUC CI low,0.4741,auc,300,test_ood_both,measured,eval/results.csv,model=ela_baseline; thr chosen on val=18.467; 95% CI by bootstrap
+ela_baseline.auc_hi.test_ood_both,ela_baseline AUC CI high,0.6064,auc,300,test_ood_both,measured,eval/results.csv,model=ela_baseline; thr chosen on val=18.467; 95% CI by bootstrap
+ela_baseline.f1.test_ood_both,ela_baseline image F1,0.6998,f1,300,test_ood_both,measured,eval/results.csv,model=ela_baseline; thr chosen on val=18.467; 95% CI by bootstrap
+ela_baseline.pixel_f1.test_ood_both,ela_baseline pixel F1,0.0144,f1,300,test_ood_both,measured,eval/results.csv,model=ela_baseline; thr chosen on val=18.467; 95% CI by bootstrap
+ela_baseline.iou.test_ood_both,ela_baseline pixel IoU,0.0073,iou,300,test_ood_both,measured,eval/results.csv,model=ela_baseline; thr chosen on val=18.467; 95% CI by bootstrap
+ela_baseline.auc.test_ai_inpaint,ela_baseline image AUC,0.4341,auc,150,test_ai_inpaint,measured,eval/results.csv,model=ela_baseline; thr chosen on val=18.467; 95% CI by bootstrap
+ela_baseline.auc_lo.test_ai_inpaint,ela_baseline AUC CI low,0.3439,auc,150,test_ai_inpaint,measured,eval/results.csv,model=ela_baseline; thr chosen on val=18.467; 95% CI by bootstrap
+ela_baseline.auc_hi.test_ai_inpaint,ela_baseline AUC CI high,0.5237,auc,150,test_ai_inpaint,measured,eval/results.csv,model=ela_baseline; thr chosen on val=18.467; 95% CI by bootstrap
+ela_baseline.f1.test_ai_inpaint,ela_baseline image F1,0.6296,f1,150,test_ai_inpaint,measured,eval/results.csv,model=ela_baseline; thr chosen on val=18.467; 95% CI by bootstrap
+ela_baseline.pixel_f1.test_ai_inpaint,ela_baseline pixel F1,0.014,f1,150,test_ai_inpaint,measured,eval/results.csv,model=ela_baseline; thr chosen on val=18.467; 95% CI by bootstrap
+ela_baseline.iou.test_ai_inpaint,ela_baseline pixel IoU,0.007,iou,150,test_ai_inpaint,measured,eval/results.csv,model=ela_baseline; thr chosen on val=18.467; 95% CI by bootstrap
+ela_baseline.auc.test_classical_inpaint,ela_baseline image AUC,0.5102,auc,150,test_classical_inpaint,measured,eval/results.csv,model=ela_baseline; thr chosen on val=18.467; 95% CI by bootstrap
+ela_baseline.auc_lo.test_classical_inpaint,ela_baseline AUC CI low,0.4253,auc,150,test_classical_inpaint,measured,eval/results.csv,model=ela_baseline; thr chosen on val=18.467; 95% CI by bootstrap
+ela_baseline.auc_hi.test_classical_inpaint,ela_baseline AUC CI high,0.6042,auc,150,test_classical_inpaint,measured,eval/results.csv,model=ela_baseline; thr chosen on val=18.467; 95% CI by bootstrap
+ela_baseline.f1.test_classical_inpaint,ela_baseline image F1,0.6667,f1,150,test_classical_inpaint,measured,eval/results.csv,model=ela_baseline; thr chosen on val=18.467; 95% CI by bootstrap
+ela_baseline.pixel_f1.test_classical_inpaint,ela_baseline pixel F1,0.0023,f1,150,test_classical_inpaint,measured,eval/results.csv,model=ela_baseline; thr chosen on val=18.467; 95% CI by bootstrap
+ela_baseline.iou.test_classical_inpaint,ela_baseline pixel IoU,0.0012,iou,150,test_classical_inpaint,measured,eval/results.csv,model=ela_baseline; thr chosen on val=18.467; 95% CI by bootstrap
+unet.auc.test_id,unet image AUC,0.9934,auc,300,test_id,measured,eval/results.csv,model=unet; thr chosen on val=0.000; 95% CI by bootstrap
+unet.auc_lo.test_id,unet AUC CI low,0.9861,auc,300,test_id,measured,eval/results.csv,model=unet; thr chosen on val=0.000; 95% CI by bootstrap
+unet.auc_hi.test_id,unet AUC CI high,0.9988,auc,300,test_id,measured,eval/results.csv,model=unet; thr chosen on val=0.000; 95% CI by bootstrap
+unet.f1.test_id,unet image F1,0.9675,f1,300,test_id,measured,eval/results.csv,model=unet; thr chosen on val=0.000; 95% CI by bootstrap
+unet.pixel_f1.test_id,unet pixel F1,0.9395,f1,300,test_id,measured,eval/results.csv,model=unet; thr chosen on val=0.000; 95% CI by bootstrap
+unet.iou.test_id,unet pixel IoU,0.8858,iou,300,test_id,measured,eval/results.csv,model=unet; thr chosen on val=0.000; 95% CI by bootstrap
+unet.auc.test_ood_layout,unet image AUC,0.7585,auc,300,test_ood_layout,measured,eval/results.csv,model=unet; thr chosen on val=0.000; 95% CI by bootstrap
+unet.auc_lo.test_ood_layout,unet AUC CI low,0.7039,auc,300,test_ood_layout,measured,eval/results.csv,model=unet; thr chosen on val=0.000; 95% CI by bootstrap
+unet.auc_hi.test_ood_layout,unet AUC CI high,0.8116,auc,300,test_ood_layout,measured,eval/results.csv,model=unet; thr chosen on val=0.000; 95% CI by bootstrap
+unet.f1.test_ood_layout,unet image F1,0.6489,f1,300,test_ood_layout,measured,eval/results.csv,model=unet; thr chosen on val=0.000; 95% CI by bootstrap
+unet.pixel_f1.test_ood_layout,unet pixel F1,0.633,f1,300,test_ood_layout,measured,eval/results.csv,model=unet; thr chosen on val=0.000; 95% CI by bootstrap
+unet.iou.test_ood_layout,unet pixel IoU,0.463,iou,300,test_ood_layout,measured,eval/results.csv,model=unet; thr chosen on val=0.000; 95% CI by bootstrap
+unet.auc.test_ood_tamper,unet image AUC,0.7379,auc,300,test_ood_tamper,measured,eval/results.csv,model=unet; thr chosen on val=0.000; 95% CI by bootstrap
+unet.auc_lo.test_ood_tamper,unet AUC CI low,0.6746,auc,300,test_ood_tamper,measured,eval/results.csv,model=unet; thr chosen on val=0.000; 95% CI by bootstrap
+unet.auc_hi.test_ood_tamper,unet AUC CI high,0.7915,auc,300,test_ood_tamper,measured,eval/results.csv,model=unet; thr chosen on val=0.000; 95% CI by bootstrap
+unet.f1.test_ood_tamper,unet image F1,0.658,f1,300,test_ood_tamper,measured,eval/results.csv,model=unet; thr chosen on val=0.000; 95% CI by bootstrap
+unet.pixel_f1.test_ood_tamper,unet pixel F1,0.5383,f1,300,test_ood_tamper,measured,eval/results.csv,model=unet; thr chosen on val=0.000; 95% CI by bootstrap
+unet.iou.test_ood_tamper,unet pixel IoU,0.3683,iou,300,test_ood_tamper,measured,eval/results.csv,model=unet; thr chosen on val=0.000; 95% CI by bootstrap
+unet.auc.test_ood_both,unet image AUC,0.6273,auc,300,test_ood_both,measured,eval/results.csv,model=unet; thr chosen on val=0.000; 95% CI by bootstrap
+unet.auc_lo.test_ood_both,unet AUC CI low,0.5678,auc,300,test_ood_both,measured,eval/results.csv,model=unet; thr chosen on val=0.000; 95% CI by bootstrap
+unet.auc_hi.test_ood_both,unet AUC CI high,0.6858,auc,300,test_ood_both,measured,eval/results.csv,model=unet; thr chosen on val=0.000; 95% CI by bootstrap
+unet.f1.test_ood_both,unet image F1,0.6893,f1,300,test_ood_both,measured,eval/results.csv,model=unet; thr chosen on val=0.000; 95% CI by bootstrap
+unet.pixel_f1.test_ood_both,unet pixel F1,0.3938,f1,300,test_ood_both,measured,eval/results.csv,model=unet; thr chosen on val=0.000; 95% CI by bootstrap
+unet.iou.test_ood_both,unet pixel IoU,0.2451,iou,300,test_ood_both,measured,eval/results.csv,model=unet; thr chosen on val=0.000; 95% CI by bootstrap
+unet.auc.test_ai_inpaint,unet image AUC,0.5972,auc,150,test_ai_inpaint,measured,eval/results.csv,model=unet; thr chosen on val=0.000; 95% CI by bootstrap
+unet.auc_lo.test_ai_inpaint,unet AUC CI low,0.5095,auc,150,test_ai_inpaint,measured,eval/results.csv,model=unet; thr chosen on val=0.000; 95% CI by bootstrap
+unet.auc_hi.test_ai_inpaint,unet AUC CI high,0.691,auc,150,test_ai_inpaint,measured,eval/results.csv,model=unet; thr chosen on val=0.000; 95% CI by bootstrap
+unet.f1.test_ai_inpaint,unet image F1,0.2697,f1,150,test_ai_inpaint,measured,eval/results.csv,model=unet; thr chosen on val=0.000; 95% CI by bootstrap
+unet.pixel_f1.test_ai_inpaint,unet pixel F1,0.1426,f1,150,test_ai_inpaint,measured,eval/results.csv,model=unet; thr chosen on val=0.000; 95% CI by bootstrap
+unet.iou.test_ai_inpaint,unet pixel IoU,0.0767,iou,150,test_ai_inpaint,measured,eval/results.csv,model=unet; thr chosen on val=0.000; 95% CI by bootstrap
+unet.auc.test_classical_inpaint,unet image AUC,0.5164,auc,150,test_classical_inpaint,measured,eval/results.csv,model=unet; thr chosen on val=0.000; 95% CI by bootstrap
+unet.auc_lo.test_classical_inpaint,unet AUC CI low,0.4164,auc,150,test_classical_inpaint,measured,eval/results.csv,model=unet; thr chosen on val=0.000; 95% CI by bootstrap
+unet.auc_hi.test_classical_inpaint,unet AUC CI high,0.6124,auc,150,test_classical_inpaint,measured,eval/results.csv,model=unet; thr chosen on val=0.000; 95% CI by bootstrap
+unet.f1.test_classical_inpaint,unet image F1,0.075,f1,150,test_classical_inpaint,measured,eval/results.csv,model=unet; thr chosen on val=0.000; 95% CI by bootstrap
+unet.pixel_f1.test_classical_inpaint,unet pixel F1,0.0072,f1,150,test_classical_inpaint,measured,eval/results.csv,model=unet; thr chosen on val=0.000; 95% CI by bootstrap
+unet.iou.test_classical_inpaint,unet pixel IoU,0.0036,iou,150,test_classical_inpaint,measured,eval/results.csv,model=unet; thr chosen on val=0.000; 95% CI by bootstrap
