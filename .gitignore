@@ -246,3 +246,5 @@ data/models/
 *.pt
 .venv/
 __pycache__/
+
+config/trust/

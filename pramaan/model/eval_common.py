@@ -12,7 +12,7 @@ from PIL import Image
 from . import metrics as M
 
 RESULT_COLS = ["metric_id", "metric", "value", "unit", "n", "set", "label", "source_file", "notes"]
-TEST_SETS = ["test_id", "test_ood_layout", "test_ood_tamper", "test_ood_both"]
+TEST_SETS = ["test_id", "test_ood_layout", "test_ood_tamper", "test_ood_both", "test_ai_inpaint", "test_classical_inpaint"]
 
 
 def load_manifest(data_dir: str) -> Dict[str, List[dict]]:
