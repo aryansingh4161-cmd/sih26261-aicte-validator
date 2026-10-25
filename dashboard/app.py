@@ -8,6 +8,7 @@ import sys
 from datetime import date
 
 import streamlit as st
+import yaml
 from PIL import Image, ImageDraw
 
 sys.path.insert(0, os.getcwd())
@@ -44,13 +45,43 @@ def page_image(path, page, boxes):
         return None
 
 
+def users(path="config/users.yaml"):
+    with open(path) as f:
+        cfg = yaml.safe_load(f) or {}
+    return cfg.get("users", []), cfg.get("roles", {})
+
+
+def view_once(log, user, app_id, what):
+    """Audit every page view, once per (user, page) change, not on every Streamlit rerun."""
+    key = (user["id"], app_id, what)
+    if st.session_state.get("last_view") != key:
+        log.append(user["id"], user["role"], f"page view: {what}", app_id, {"ui": "dashboard"})
+        st.session_state["last_view"] = key
+
+
 st.sidebar.title("Pramaan AI")
 st.sidebar.caption("AI advisory only. The officer decides. The tool never rejects.")
-if st.sidebar.button("Run pipeline on demo applications"):
-    with st.spinner("Processing..."):
-        for m in sorted(glob.glob("data/demo/apps/*.json")):
-            run_application(m, OUT, date(2026, 10, 26), DB)
-    st.sidebar.success("Done")
+USERS, ROLES = users()
+user = st.sidebar.selectbox("Sign in as", USERS, format_func=lambda u: f"{u['name']} ({u['role']})")
+PERMS = set(ROLES.get(user["role"], []))
+st.sidebar.caption("demo users, no passwords (designed for SSO)")
+os.makedirs(OUT, exist_ok=True)
+log = AuditLog(DB)
+if st.session_state.get("signed_in") != user["id"]:
+    log.append(user["id"], user["role"], "sign in", None, {"permissions": sorted(PERMS), "auth": "demo, no password"})
+    st.session_state["signed_in"] = user["id"]
+if "run_pipeline" in PERMS:
+    if st.sidebar.button("Run pipeline on demo applications"):
+        with st.spinner("Processing..."):
+            for m in sorted(glob.glob("data/demo/apps/*.json")):
+                run_application(m, OUT, date(2026, 10, 26), DB)
+        log.append(user["id"], user["role"], "run pipeline", None, {"apps": "data/demo/apps/*.json"})
+        st.sidebar.success("Done")
+else:
+    st.sidebar.caption("Running the pipeline needs the admin role.")
+if "read" not in PERMS:
+    st.warning("This role cannot view applications.")
+    st.stop()
 results = load()
 if not results:
     st.info("No results yet. Click 'Run pipeline on demo applications' in the sidebar.")
@@ -61,11 +92,12 @@ st.subheader("Queue")
 st.dataframe([{"application": r["app_id"], "priority": r.get("priority", 0.0), "lane": LANE[r["lane"]][0], "findings": len(r["findings"]),
                "high": sum(f["severity"] == "high" for f in r["findings"]),
                "earliest due": min((a["due_by"] for a in r["alerts"]), default="-"), "seconds": r["seconds_taken"]} for r in rows],
-             use_container_width=True, hide_index=True)
+             width="stretch", hide_index=True)
 if not rows:
     st.stop()
 app = st.selectbox("Open application", [r["app_id"] for r in rows])
 r = next(x for x in rows if x["app_id"] == app)
+view_once(log, user, app, "application")
 label, col = LANE[r["lane"]]
 st.markdown(f"<div style='background:{col};color:white;padding:10px 16px;border-radius:6px;font-size:20px;display:inline-block'>"
             f"{label}</div> &nbsp; <span style='color:#555'>advisory, {len(r['findings'])} findings</span>", unsafe_allow_html=True)
@@ -92,21 +124,22 @@ with right:
         d = docs[ev["doc_id"]]
         img = page_image(d["path"], ev["page"], [ev["bbox"]] if ev.get("bbox") else [])
         if img is not None:
-            st.image(img, caption=f"{d['filename']} ({d['doc_type']}) - red box = evidence", use_container_width=True)
+            st.image(img, caption=f"{d['filename']} ({d['doc_type']}) - red box = evidence", width="stretch")
     else:
         st.caption("Click 'Show evidence' on a finding to see the highlighted region.")
 st.markdown("#### Officer decision")
 c1, c2 = st.columns([2, 1])
 comment = c1.text_input("Reason (required)", key=f"c-{app}")
 decision = c2.selectbox("Decision", ["Approve for next step", "Return for rectification", "Send to expert review"], key=f"d-{app}")
-log = AuditLog(DB)
-if st.button("Record decision"):
+if "decide" not in PERMS:
+    st.info(f"Signed in as {user['role']}: read only. Only a scrutiny officer can record a decision.")
+elif st.button("Record decision"):
     if not comment.strip():
         st.error("Write a reason first. Every decision needs one.")
     else:
-        log.append("officer-demo", "officer", f"decision: {decision}", app, {"comment": comment, "ai_lane": r["lane"]})
+        log.append(user["id"], user["role"], f"decision: {decision}", app, {"comment": comment, "ai_lane": r["lane"]})
         st.success("Decision recorded in the audit log.")
 ok, bad = log.verify_chain()
 st.caption(f"Audit chain: {'intact' if ok else f'BROKEN at row {bad}'} | head {log.head()[:16]}...")
 with st.expander("Audit log for this application"):
-    st.dataframe([{k: x[k] for k in ("id", "ts", "actor", "action", "hash")} for x in log.rows(app)], hide_index=True)
+    st.dataframe([{k: x.get(k) for k in ("id", "ts", "actor", "role", "action", "hash")} for x in log.rows(app)], hide_index=True)

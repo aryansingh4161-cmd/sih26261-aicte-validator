@@ -1,0 +1,15 @@
+# PLACEHOLDER until Saanvi's sheet arrives. These numbers are NOT from the Handbook (ASSUMPTION, illustrative only).
+# Replace with:  python -m tools.norms_to_yaml config/area_norms.csv config/area_norms.yaml
+# min_rooms_number is for ONE stated example: UG Engineering, 1 division of 60 per year, 4 years.
+source: placeholder
+placeholder: true
+example: min_rooms_number = UG Engineering, 1 division of 60 per year, 4 years
+norms:
+  - {room_type: classroom, programme: UG Engineering, min_rooms_rule_as_printed: "", min_rooms_number: 4,
+     min_area_per_room_sqm: 66, aph_clause: "PLACEHOLDER - not from the Handbook", page: "", clause_verified: false}
+  - {room_type: tutorial_room, programme: UG Engineering, min_rooms_rule_as_printed: "", min_rooms_number: 2,
+     min_area_per_room_sqm: 33, aph_clause: "PLACEHOLDER - not from the Handbook", page: "", clause_verified: false}
+  - {room_type: laboratory, programme: UG Engineering, min_rooms_rule_as_printed: "", min_rooms_number: null,
+     min_area_per_room_sqm: 66, aph_clause: "PLACEHOLDER - not from the Handbook", page: "", clause_verified: false}
+  - {room_type: drawing_hall, programme: UG Engineering, min_rooms_rule_as_printed: "", min_rooms_number: 1,
+     min_area_per_room_sqm: 132, aph_clause: "PLACEHOLDER - not from the Handbook", page: "", clause_verified: false}

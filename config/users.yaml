@@ -1,0 +1,9 @@
+# Demo users, no passwords (designed for SSO). Role -> permissions. Changing a role here changes what the dashboard allows.
+roles:
+  scrutiny_officer: [read, decide]
+  viewer: [read]
+  admin: [read, run_pipeline]
+users:
+  - {id: officer.demo, name: Demo Scrutiny Officer, role: scrutiny_officer}
+  - {id: viewer.demo, name: Demo Viewer, role: viewer}
+  - {id: admin.demo, name: Demo Admin, role: admin}

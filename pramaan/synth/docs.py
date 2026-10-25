@@ -298,7 +298,46 @@ def _struct(P: Painter, inst: Dict, d: Dict, layout: str):
     return truth, {}
 
 
-BUILDERS = {"eoa_letter": _eoa, "affidavit_2": _affidavit, "noc_format2": _noc, "fire_cert": _fire, "structural_cert": _struct}
+def _area(P: Painter, inst: Dict, d: Dict, layout: str):
+    P.title("STATEMENT OF BUILT-UP AREA (SYNTHETIC)", 13)
+    P.kv("Name of the Institution", inst["institute_name"], "institute_name")
+    P.para(f"Instructional and other areas of {inst['institute_name']} as constructed on the date of this statement:")
+    rows = [[a["room_type"], str(a["count"]), str(a["area_sqm"])] for a in d["areas"]]
+    P.table(["Room type", "Number", "Area (sq m)"], rows, [0.5, 0.2, 0.3],
+            [[None, f"area_count_{i}", f"area_sqm_{i}"] for i in range(len(rows))])
+    total = d.get("total_built_up_area_sqm") or round(sum(a["area_sqm"] for a in d["areas"]) * 1.4)
+    P.kv("Total built-up area (sq m)", str(total), "total_built_up_area_sqm")
+    P.y -= 10
+    P.put(P.x0, P.y, "Architect (Synthetic)")
+    truth = {"institute_name": inst["institute_name"], "total_built_up_area_sqm": str(total)}
+    return truth, {"areas": [{k: str(v) for k, v in a.items()} for a in d["areas"]]}
+
+
+_NORMS: list = []
+
+
+def area_rows(inst: Dict, norms_path: str = "config/area_norms.yaml") -> List[Dict]:
+    """Rooms that MEET the norms file (so the demo follows Saanvi's numbers when they replace the placeholder).
+    Own RNG seeded from the institute, so other random values in default_details do not shift."""
+    if not _NORMS:
+        try:
+            import yaml
+            with open(norms_path) as f:
+                _NORMS.extend((yaml.safe_load(f) or {}).get("norms", []))
+        except Exception:
+            _NORMS.append({"room_type": "classroom", "min_rooms_number": 4, "min_area_per_room_sqm": 66})
+    rng = random.Random(f"area-{inst['permanent_id']}")
+    out = []
+    for n in _NORMS:
+        cnt = int(n.get("min_rooms_number") or rng.randint(3, 6)) + rng.randint(0, 3)
+        per = float(n.get("min_area_per_room_sqm") or 30) * rng.uniform(1.05, 1.35)
+        out.append({"room_type": n["room_type"].replace("_", " ").title(), "count": cnt, "area_sqm": round(cnt * per)})
+    out.append({"room_type": "Library", "count": 1, "area_sqm": rng.randint(300, 500)})
+    return out
+
+
+BUILDERS = {"eoa_letter": _eoa, "affidavit_2": _affidavit, "noc_format2": _noc, "fire_cert": _fire, "structural_cert": _struct,
+            "area_statement": _area}
 
 
 def default_details(rng: random.Random, inst: Dict) -> Dict:
@@ -315,6 +354,7 @@ def default_details(rng: random.Random, inst: Dict) -> Dict:
         "fire_no": f"FS/{ay0 - 1}/{rng.randint(1000, 99999)}", "fire_auth": rng.choice(C.FIRE_AUTH),
         "issue_date": issue_fire, "valid_until": issue_fire + timedelta(days=365 * 3),
         "struct_no": str(rng.randint(100, 999)), "struct_auth": rng.choice(C.STRUCT_AUTH), "validity_years": rng.choice([3, 5]),
+        "areas": area_rows(inst),
     }
 
 

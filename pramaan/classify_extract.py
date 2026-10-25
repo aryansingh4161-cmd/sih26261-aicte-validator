@@ -68,18 +68,13 @@ def _field(doc: DocumentRecord, name: str, fs: dict):
 
 def _rows_from_lines(doc: DocumentRecord, ts: dict) -> list:
     """Fallback for borderless tables: lines ending in one or two numbers after the header line."""
-    two = "intake_prev" in ts["columns"]
-    pat = re.compile(r"^(.*?)\s+(\d{1,4})\s+(\d{1,4})$" if two else r"^(.*?)\s+(\d{1,4})$")
+    cols = list(ts["columns"])                      # first column = text, the rest = numbers, in spec order
+    pat = re.compile(r"^(.*?)" + r"\s+(\d{1,4})" * (len(cols) - 1) + "$")
     rows = []
     for b in doc.blocks:
         m = pat.match(b.text.strip())
         if m and not re.search(r"\d{4}-\d{2}", b.text):
-            r = {"course": m.group(1).strip()}
-            if two:
-                r.update(intake_prev=m.group(2), intake_curr=m.group(3))
-            else:
-                r["intake_curr"] = m.group(2)
-            rows.append(r)
+            rows.append({c: m.group(i + 1).strip() for i, c in enumerate(cols)})
     return rows
 
 

@@ -87,6 +87,48 @@ def _check(rule, app, docs, ver, record, today):
     raise ValueError(f"unknown rule type {t}")
 
 
+def _slug(s):
+    return re.sub(r"[^a-z0-9]+", "_", (s or "").strip().lower()).strip("_")
+
+
+def _area_min(rule, app, docs):
+    """F9: per room type in the norms file, average area per room and number of rooms. One finding per shortfall."""
+    p = rule.get("params", {}) or {}
+    doc = _doc(docs, p.get("doc_type", "area_statement"))
+    if doc is None:
+        return []
+    with open(p["norms_file"]) as fh:
+        nf = yaml.safe_load(fh) or {}
+    have: dict = {}
+    for row in doc.tables.get("areas", []):
+        c, a = re.sub(r"[^\d.]", "", row.get("count", "")), re.sub(r"[^\d.]", "", row.get("area_sqm", ""))
+        if c and a:
+            k = have.setdefault(_slug(row.get("room_type")), [0, 0.0, row.get("room_type", "")]); k[0] += int(float(c)); k[1] += float(a)
+    tail = " Norm values are PLACEHOLDERS until checked against the Handbook." if nf.get("placeholder") else ""
+    out = []
+    for n in nf.get("norms", []):
+        rt = n["room_type"]; cnt, area, label = have.get(rt, [0, 0.0, rt.replace("_", " ").title()])
+        blk = next((b for b in doc.blocks if b.text.lower().startswith(label.lower())), None)
+        ev = [Evidence(doc_id=doc.doc_id, page=blk.page if blk else 1, bbox=blk.bbox if blk else None,
+                       text=(blk.text if blk else f"{label}: not listed")[:200])]
+        hits = []
+        need_a, need_n = n.get("min_area_per_room_sqm"), n.get("min_rooms_number")
+        if need_a and cnt > 0 and area / cnt < float(need_a):
+            hits.append((f"R-AREA-{rt}", f"{label}: area per room below the norm",
+                         f"{cnt} {label} room(s), {area:g} sq m in total = {area / cnt:.1f} sq m per room; "
+                         f"the norm is at least {need_a} sq m per room ({n.get('programme', '')})."))
+        if need_n is not None and cnt < int(need_n):
+            hits.append((f"R-AREA-COUNT-{rt}", f"{label}: fewer rooms than the norm",
+                         f"{cnt} {label} room(s) listed; the norm asks for at least {need_n} "
+                         f"(computed for: {nf.get('example', 'the stated example')})."))
+        for rid, title, reason in hits:
+            out.append(Finding(finding_id=f"{app.app_id}-{rid}-{doc.doc_id}", app_id=app.app_id, doc_id=doc.doc_id, source="rule",
+                               rule_id=rid, aph_clause=n.get("aph_clause") or None, clause_verified=bool(n.get("clause_verified", False)),
+                               title=title, reason=(reason + tail)[:400], severity=rule.get("severity", "medium"),
+                               lane=rule.get("lane", "return_for_rectification"), evidence=ev))
+    return out
+
+
 def run_rules(app: Application, docs: list[DocumentRecord], verifications: list[VerificationResult],
               record: dict | None, rulepack_path: str, today: date) -> list[Finding]:
     out: list[Finding] = []
@@ -99,6 +141,9 @@ def run_rules(app: Application, docs: list[DocumentRecord], verifications: list[
     for r in rules:
         try:
             if app.category not in r.get("applies_to", []):
+                continue
+            if r["type"] == "area_min":
+                out += _area_min(r, app, docs)
                 continue
             res = _check(r, app, docs, verifications, record, today)
             if res is None:

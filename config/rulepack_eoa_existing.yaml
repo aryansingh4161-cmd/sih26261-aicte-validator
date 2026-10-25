@@ -113,3 +113,13 @@ rules:
     message: Without last year's approval letter the intake cross-checks are skipped.
     aph_clause: null
     clause_verified: false
+  - id: R-AREA
+    type: area_min              # F9: one finding per room type below the norm (R-AREA-<room_type>, R-AREA-COUNT-<room_type>)
+    applies_to: [eoa_existing_regular, intake_increase]
+    params: {doc_type: area_statement, norms_file: config/area_norms.yaml}
+    severity: medium
+    lane: return_for_rectification
+    title: Built-up area below the norm
+    message: Per-room-type area and room counts are compared with the Handbook norms in config/area_norms.yaml.
+    aph_clause: null            # each finding carries the clause of its own norm row
+    clause_verified: false

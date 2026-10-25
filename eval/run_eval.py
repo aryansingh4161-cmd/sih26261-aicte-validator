@@ -38,7 +38,7 @@ def extraction(n_inst: int, seed: int = 101):
                         got = d.fields[f].value if f in d.fields else None
                         s[0] += int(norm_name(str(got)) == norm_name(str(v))); s[1] += 1
     tot_ok = sum(v[0] for v in per.values()); tot = sum(v[1] for v in per.values())
-    rows.append(dict(metric_id="extract.field_acc.all", metric="Field extraction accuracy (synthetic, 5 types x 3 layouts)",
+    rows.append(dict(metric_id="extract.field_acc.all", metric="Field extraction accuracy (synthetic, " + f"{len(D.BUILDERS)} types x 3 layouts)",
                      value=round(tot_ok / tot, 4), unit="fraction", n=tot, set="synthetic_docs", label="measured"))
     rows.append(dict(metric_id="extract.type_acc.all", metric="Document type accuracy (synthetic)",
                      value=round(sum(v[3] for v in per.values()) / sum(v[2] for v in per.values()), 4), unit="fraction",

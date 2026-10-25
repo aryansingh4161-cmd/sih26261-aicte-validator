@@ -1,0 +1,145 @@
+[
+ {
+  "page": 1,
+  "text": "OFFICE OF THE EXECUTIVE ENGINEER, PUBLIC WORKS (SYNTHETIC)",
+  "bbox": [
+   0.1523579201934704,
+   0.05641025641025641,
+   0.848851269649335,
+   0.07692307692307693
+  ],
+  "conf": 0.836
+ },
+ {
+  "page": 1,
+  "text": "No:: 585 Date: 23-12-2024",
+  "bbox": [
+   0.09068923821039904,
+   0.0829059829059829,
+   0.9153567110036276,
+   0.09829059829059829
+  ],
+  "conf": 0.745
+ },
+ {
+  "page": 1,
+  "text": "To; Maplewood Institute of Engineering and Management; 238 College Road, Exampleton, Exampleland",
+  "bbox": [
+   0.09068923821039904,
+   0.1076923076923077,
+   0.8694074969770254,
+   0.12478632478632479
+  ],
+  "conf": 0.421
+ },
+ {
+  "page": 1,
+  "text": "West - 461901",
+  "bbox": [
+   0.09068923821039904,
+   0.12735042735042734,
+   0.20435308343409916,
+   0.14102564102564102
+  ],
+  "conf": 0.929
+ },
+ {
+  "page": 1,
+  "text": "Sub:- Regarding Safety certificate of Building Maplewood Institute of Engineering and Management;",
+  "bbox": [
+   0.09068923821039904,
+   0.14786324786324787,
+   0.8911729141475212,
+   0.1658119658119658
+  ],
+  "conf": 0.671
+ },
+ {
+  "page": 1,
+  "text": "238 College Road, Exampleton, Exampleland West 461901",
+  "bbox": [
+   0.09068923821039904,
+   0.1658119658119658,
+   0.5671100362756953,
+   0.1829059829059829
+  ],
+  "conf": 0.825
+ },
+ {
+  "page": 1,
+  "text": "It is to inform you that the above building has been inspected on the basis of the recommendation and",
+  "bbox": [
+   0.09068923821039904,
+   0.18888888888888888,
+   0.8524788391777509,
+   0.20683760683760682
+  ],
+  "conf": 0.519
+ },
+ {
+  "page": 1,
+  "text": "affidavit furnished by the owner; It is certified that this building safe in norma conditions; excluding natural",
+  "bbox": [
+   0.09068923821039904,
+   0.2076923076923077,
+   0.8960096735187424,
+   0.2230769230769231
+  ],
+  "conf": 0.856
+ },
+ {
+  "page": 1,
+  "text": "disasters such as earthquake or cyclone_",
+  "bbox": [
+   0.09068923821039904,
+   0.2247863247863248,
+   0.3954050785973398,
+   0.24188034188034188
+  ],
+  "conf": 0.719
+ },
+ {
+  "page": 1,
+  "text": "This Certificate Is valid for perod of 5 (Five Years) from the issued date and is subject t0 regular upkeep",
+  "bbox": [
+   0.09068923821039904,
+   0.24700854700854702,
+   0.8814993954050786,
+   0.2641025641025641
+  ],
+  "conf": 0.549
+ },
+ {
+  "page": 1,
+  "text": "and annual maintenance",
+  "bbox": [
+   0.09068923821039904,
+   0.2675213675213675,
+   0.279322853688029,
+   0.2794871794871795
+  ],
+  "conf": 0.835
+ },
+ {
+  "page": 1,
+  "text": "Executive Engineer (Synthetic)",
+  "bbox": [
+   0.09068923821039904,
+   0.3,
+   0.3252720677146312,
+   0.3153846153846154
+  ],
+  "conf": 0.997
+ },
+ {
+  "page": 1,
+  "text": "SYNTHETIC SAMPLE",
+  "bbox": [
+   0.4316807738814994,
+   0.9547008547008548,
+   0.5695284159613059,
+   0.9666666666666667
+  ],
+  "conf": 0.719
+ }
+]

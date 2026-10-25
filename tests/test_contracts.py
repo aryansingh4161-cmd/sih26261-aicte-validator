@@ -174,16 +174,52 @@ def t_reuse(m):
     assert m.check_reuse(a, [doc("TA", "FS/1", "s1")], db) == []          # earlier app re-run: unchanged
     assert m.check_reuse(b, [doc("TB", "FS/9", "s3")], db)[0].rule_id == "X-REUSE-PHOTO"   # cert changed, photo still shared
 
+
+def t_area(m):
+    """rules area_min (F9) on a real synthetic area_statement + tools/norms_to_yaml uses ONLY rows with checked = ok."""
+    import yaml
+    from pramaan.classify_extract import classify_and_extract
+    from pramaan.ingest import ingest
+    from tools.norms_to_yaml import convert
+    csvp = os.path.join(TMP, "norms.csv")
+    with open(csvp, "w") as f:
+        f.write("room_type,min_rooms_rule_as_printed,min_rooms_number,min_area_per_room_sqm,programme,clause_as_printed,page,checked\n"
+                "Classroom,one per division,4,66,UG Engineering,CLAUSE TEXT A,12,ok\n"
+                "Drawing Hall,one,1,132,UG Engineering,CLAUSE TEXT B,12,ok\n"
+                "Seminar Hall,,,132,UG Engineering,CLAUSE TEXT C,13,\n")
+    nf = convert(csvp)
+    assert [n["room_type"] for n in nf["norms"]] == ["classroom", "drawing_hall"] and nf["norms"][0]["clause_verified"] is True, nf
+    normp, rp = os.path.join(TMP, "norms.yaml"), os.path.join(TMP, "rp_area.yaml")
+    yaml.safe_dump(nf, open(normp, "w"))
+    yaml.safe_dump({"rules": [{"id": "R-AREA", "type": "area_min", "applies_to": ["eoa_existing_regular"],
+                               "params": {"doc_type": "area_statement", "norms_file": normp}, "severity": "medium",
+                               "lane": "return_for_rectification", "title": "t", "message": "m"}]}, open(rp, "w"))
+    det = D.default_details(random.Random(9), INST)
+    det["areas"] = [{"room_type": "Classroom", "count": 5, "area_sqm": 300}, {"room_type": "Library", "count": 1, "area_sqm": 400}]
+    path = D.render_pdf("area_statement", "C", INST, det, os.path.join(TMP, "area.pdf"))["path"]
+    doc = classify_and_extract(ingest(path, "T1-area_statement"))
+    assert doc.doc_type == "area_statement" and len(doc.tables.get("areas", [])) == 2, (doc.doc_type, doc.tables)
+    out = m.run_rules(APP, [doc], [], None, rp, TODAY)
+    ids = sorted(f.rule_id for f in out)          # classroom 60 < 66 per room; drawing hall absent -> 0 < 1
+    assert ids == ["R-AREA-COUNT-drawing_hall", "R-AREA-classroom"], ids
+    assert all(f.lane == "return_for_rectification" and f.severity == "medium" and f.clause_verified for f in out)
+    assert next(f for f in out if f.rule_id == "R-AREA-classroom").aph_clause == "CLAUSE TEXT A"
+    det["areas"][0]["area_sqm"] = 330                                            # exactly 66 per room: passes
+    D.render_pdf("area_statement", "A", INST, det, path)
+    assert sorted(f.rule_id for f in m.run_rules(APP, [classify_and_extract(ingest(path, "T1-a"))], [], None, rp, TODAY)) == ["R-AREA-COUNT-drawing_hall"]
+    assert m.run_rules(APP, [], [], None, rp, TODAY) == []                        # no area statement: nothing (required_doc reports it)
+
 class _Skip(Exception):
     pass
 
 
-MODULE = {"signature": "forensics", "priority": "priority", "reuse": "reuse"}   # test name -> module in pramaan/
+MODULE = {"signature": "forensics", "priority": "priority", "reuse": "reuse", "area": "rules"}   # test name -> module in pramaan/
 
 
 TESTS = {"ingest": t_ingest, "classify_extract": t_classify_extract, "rules": t_rules, "crosscheck": t_crosscheck,
          "triage": t_triage, "audit": t_audit, "report": t_report, "pipeline": t_pipeline,
-         "signature": t_signature, "priority": t_priority, "reuse": t_reuse}
+         "signature": t_signature, "priority": t_priority, "reuse": t_reuse,
+         "area": t_area}
 
 if __name__ == "__main__":
     want = sys.argv[1:] or list(TESTS)

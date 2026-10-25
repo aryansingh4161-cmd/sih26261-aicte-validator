@@ -37,6 +37,8 @@ SCENARIOS = {
     # F8 reuse across applications: needs the source app processed first (sorted order does that)
     "APP-13": (["photo_reused_from_app09"], ["X-REUSE-PHOTO"], "human_review"),
     "APP-14": (["fire_no_reused_from_app03"], ["X-REUSE-CERT", "V-issuer_portal"], "human_review"),
+    # F9: one room type below its per-room minimum (classroom, or the first norm row); expected rule set in build()
+    "APP-15": (["area_below_norm"], ["R-AREA-classroom"], "return_for_rectification"),
 }
 
 
@@ -110,6 +112,12 @@ def build(out: str, today: date, seed: int = 11) -> dict:
             noc_det = dict(det); noc_det["noc_programs"] = [dict(p) for p in det["noc_programs"]]
             noc_det["noc_programs"][0]["intake_curr"] = str(int(noc_det["noc_programs"][0]["intake_curr"]) + 60)
         render("noc_format2", inst, noc_det)
+        if "area_below_norm" in defects:
+            det["areas"] = [dict(a) for a in det["areas"]]
+            low = next((a for a in det["areas"] if a["room_type"] == "Classroom"), det["areas"][0])
+            low["area_sqm"] = round(low["area_sqm"] * 0.8 / 1.2)      # generated at 1.05-1.35 x norm -> now 0.70-0.90 x norm
+            expect = [f"R-AREA-{low['room_type'].lower().replace(' ', '_')}"]
+        render("area_statement", inst, det)
         real_valid = det["valid_until"]
         if "expired_fire" in defects:
             det["issue_date"] = today - timedelta(days=365 * 3 + 40); det["valid_until"] = today - timedelta(days=40); real_valid = det["valid_until"]

@@ -1,0 +1,13 @@
+doc_type: area_statement
+match_any: ["STATEMENT OF BUILT-UP AREA"]
+fields:
+  institute_name:          {labels: ['Name of the Institution'], patterns: ['Name of the Institution\s*:\s*(.+)'], type: text}
+  total_built_up_area_sqm: {labels: ['Total built-up area (sq m)'], patterns: ['Total built-up area \(sq m\)\s*:\s*(\d+)'], type: text}
+tables:
+  areas:
+    columns:
+      room_type: {match: ['room'], pick: first}
+      count:     {match: ['number'], pick: first}
+      area_sqm:  {match: ['area'], pick: last}
+expected_producers: []
+expected_fonts: []
