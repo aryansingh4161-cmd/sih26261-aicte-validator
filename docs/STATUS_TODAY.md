@@ -12,4 +12,4 @@
 - Tests (measured, Python 3.13): test_synth ALL PASSED; test_contracts ALL PASSED (signature SKIP: no pyhanko). Tiny dataset (56 images) + ai_inpaint --method classical OK. All model scripts byte-compile. Dashboard compiles; no removed Streamlit APIs found by static scan.
 - Numbers (measured, reference modules, unsigned affidavits): demo pipeline 12/12 apps ran, 0.27-0.39 s each. APP-01 and APP-11 = return_for_rectification with ONE finding R-SIG-affidavit_2 (unsigned because no pyHanko); expected "clear" once signed = ASSUMPTION, untested.
 - UNTESTED: torch train/eval/tamper_model, pyHanko signing + the 4 signature cases, Streamlit serving.
-- Teammates: pull main (forensics.py is the reference copy; Jasraj's own version can replace it if it passes python -m tests.test_contracts forensics signature).
+- Teammates: pull main (forensics.py is the reference copy; Jasraj's own version can replace it if it passes python -m tests.test_contracts signature).
