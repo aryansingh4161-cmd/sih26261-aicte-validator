@@ -140,3 +140,9 @@
 - classify_extract (doc type, confidence): R1 eoa_letter 0.94, R2 eoa_letter 0.94, R3 eoa_letter 0.94, R4 eoa_letter 0.89, R5 eoa_letter 0.94, R6 eoa_letter 0.94, R7 unclassified 0.00, R8 unclassified 0.00. R7/R8 are scanned PDFs with no text layer and no OCR sidecar -> they need tools/ocr_sidecar.py first (untested on these).
 - For JASRAJ (presence only, not an accuracy measurement - eval/extraction_real.py with the answer key does that): on R1-R6 institute_name was NOT extracted on 5/6 and approval_date on 2/6; the other EoA fields were present; programs tables 1-3 rows each.
 - Tests: no code changed in this step; real_samples/ stays git-ignored (checked: git check-ignore).
+
+## WK15 item 4c - OCR on the two scanned real PDFs (R7, R8) - NOT committed (sidecars stay in real_samples/, git-ignored)
+- Run (measured): EasyOCR 1.7.2 CPU via tools.ocr_sidecar.ocr_file, 200 dpi (driven from Python: the file names contain spaces, so the shell CLI call split them). R7: 71 OCR lines, 5 pages, mean conf 0.68, 664 s; R8: 28 lines, 1 page, mean conf 0.73, 35 s. No doc spec changed.
+- R7: with slot structural_cert -> structural_cert conf 0.30 (slot prior only), fields read: none (0/5); without a slot -> unclassified 0.00. Likely not a structural certificate (5 pages); closest type unknown -> needs a human look / a new spec.
+- R8: structural_cert conf 0.84 with or without the slot; fields read: certificate_no, issuing_authority, validity_years (3/5); not read: institute_name, issue_date. Presence only, values not checked against a human answer key.
+- Note: OCR on real full-page scans is slow on CPU (R7 ~133 s/page vs 14 s/page for the synthetic 150 dpi pages in WK13).
