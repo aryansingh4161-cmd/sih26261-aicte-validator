@@ -83,7 +83,8 @@ def t_triage(m):
 
 
 def t_audit(m):
-    p = os.path.join(TMP, "a.db"); log = m.AuditLog(p)
+    fd, p = tempfile.mkstemp(suffix=".db", dir=TMP); os.close(fd)     # fresh file per call: the test tampers row 2
+    log = m.AuditLog(p)
     for i in range(3):
         log.append("sys", "system", "x", "T1", {"i": i})
     assert log.verify_chain() == (True, None)

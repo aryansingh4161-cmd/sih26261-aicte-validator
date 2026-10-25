@@ -192,3 +192,7 @@
 5) NEW tools/reset_demo.py: lists by default; --yes deletes output/*.db (incl. audit.db: a fresh demo starts a new chain), *.json, *.html, heatmaps/ and rebuilds the demo bundles. Tested on a COPY of output/ (39 items listed -> deleted, CSV exports kept); the real output/ was not reset here. On the demo laptop: python -m tools.reset_demo --yes && python -m pramaan.demo
 - Tests (measured): test_synth ALL PASSED; test_contracts 19/19 PASS (new t_reference_sync); demo lanes unchanged (17/17); run_eval field_acc 0.9974 (n=1920), recall 1.0 (n=29), unexpected 0, lane agreement 1.0, 0.58 s/app.
 - Note: an untracked file named PASS (test output with "FAIL audit", written 21:51) is in the repo root - not created by this worker, not committed, left in place; audit passes here.
+
+## Fix: t_audit re-run
+- Changed: tests/test_contracts.py t_audit uses a fresh tempfile.mkstemp database per call (it tampers row 2, so a shared a.db failed on the 2nd call in one process - that is what the stray PASS file showed: "PASS audit / FAIL audit").
+- Tests (measured): python -m tests.test_contracts audit audit audit -> 3x PASS (old code: PASS then FAIL); test_synth ALL PASSED; test_contracts 19/19 PASS. The untracked PASS file in the repo root can be deleted by whoever made it.
