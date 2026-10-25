@@ -235,3 +235,14 @@ data/demo/
 *.pt
 data/aicte_records.json
 data/mock_issuers/*.json
+
+# Pramaan
+real_samples/
+output/
+data/synthetic/
+data/samples/
+data/demo/
+data/models/
+*.pt
+.venv/
+__pycache__/
