@@ -233,3 +233,5 @@ real_samples/
 output/
 data/demo/
 *.pt
+data/aicte_records.json
+data/mock_issuers/*.json
