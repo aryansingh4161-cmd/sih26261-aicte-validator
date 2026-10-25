@@ -20,3 +20,20 @@ pyHanko signing/validation (`demo_pki.sign_pdf`, `forensics.signature_check`), S
     python -m pramaan.synth.bundles --today 2026-10-26
     python -m tests.test_contracts
     python -m pramaan.pipeline data/demo/apps/*.json --today 2026-10-26
+
+## Reproduce in one command
+Needs Python 3.11 or newer (tested on 3.11 and 3.14). All data is SYNTHETIC; issuer checks are MOCK (designed for integration).
+The demo builds the 15 demo applications, runs the pipeline on all of them, runs the eval harness (writes `output/demo_eval.csv`;
+`eval/results.csv` is not touched), prints the lanes and the key metrics, then opens the dashboard at http://localhost:8501.
+Optional parts are reported and skipped: tamper model (needs torch + `data/models/tamper_unet.pt` from the team Drive), EasyOCR.
+
+Mac / Linux:
+
+    python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt && python -m pramaan.demo
+
+Windows (PowerShell):
+
+    py -3.11 -m venv .venv; .venv\Scripts\Activate.ps1; pip install -r requirements.txt; python -m pramaan.demo
+
+Options: `--no-dashboard` (stop after the metrics), `--quick` (smaller extraction eval), `--today 2026-10-26` (default; the demo dates are built around it).
+If PowerShell refuses to run Activate.ps1: `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`, or use `.venv\Scripts\activate.bat` in cmd.
