@@ -108,19 +108,47 @@ def t_pipeline(m):
     assert any(f.rule_id == "R-MISS-fire_cert" for f in r.findings) and r.lane in ("return_for_rectification", "human_review")
 
 
+def t_signature(m):
+    """forensics.signature_check: 4 cases (designed in WK1). Needs pyHanko; SKIPs cleanly without it."""
+    from pramaan.synth import demo_pki
+    if not demo_pki.can_sign():
+        raise _Skip("pyhanko not installed: pip install pyhanko")
+    pki = demo_pki.make_pki(os.path.join(TMP, "pki"), root_copy=os.path.join(TMP, "root.pem"))
+    src = SAMPLES["affidavit_2"]["path"]
+    signed = os.path.join(TMP, "signed.pdf"); demo_pki.sign_pdf(src, signed, pki)
+    raw = open(signed, "rb").read(); assert b"SYNTH-PORTAL" in raw
+    edited = os.path.join(TMP, "edited.pdf"); open(edited, "wb").write(raw.replace(b"SYNTH-PORTAL", b"SYNTX-PORTAL", 1))
+    doc = lambda p: DocumentRecord(doc_id="T1-affidavit_2", filename=os.path.basename(p), path=p, sha256="0", pages=1)
+    cases = [(signed, [pki["root"]], "verified"), (edited, [pki["root"]], "mismatch_detected"),
+             (signed, [], "manual_review_required"), (src, [pki["root"]], "manual_review_required")]
+    for path, roots, want in cases:
+        r = m.signature_check(doc(path), roots)
+        assert r.status == want and r.method == "digital_signature" and r.mock is False, (path, roots, r.status, r.note)
+
+
+class _Skip(Exception):
+    pass
+
+
+MODULE = {"signature": "forensics"}   # test name -> module in pramaan/
+
+
 TESTS = {"ingest": t_ingest, "classify_extract": t_classify_extract, "rules": t_rules, "crosscheck": t_crosscheck,
-         "triage": t_triage, "audit": t_audit, "report": t_report, "pipeline": t_pipeline}
+         "triage": t_triage, "audit": t_audit, "report": t_report, "pipeline": t_pipeline,
+         "signature": t_signature}
 
 if __name__ == "__main__":
     want = sys.argv[1:] or list(TESTS)
     failed = 0
     for name in want:
         try:
-            mod = importlib.import_module(f"pramaan.{name}")
+            mod = importlib.import_module(f"pramaan.{MODULE.get(name, name)}")
         except ModuleNotFoundError as e:
             print(f"SKIP {name} (not in pramaan/ yet: {e.name})"); continue
         try:
             TESTS[name](mod); print(f"PASS {name}")
+        except _Skip as e:
+            print(f"SKIP {name} ({e})")
         except Exception:
             failed += 1; print(f"FAIL {name}"); traceback.print_exc(limit=2)
     print("ALL TESTS PASSED" if not failed else f"{failed} FAILED")
