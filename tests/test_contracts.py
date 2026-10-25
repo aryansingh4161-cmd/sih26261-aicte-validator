@@ -128,16 +128,62 @@ def t_signature(m):
             assert "no digital signature found" in r.note, r.note
 
 
+
+def t_priority(m):
+    """priority.score: designed weights from settings, reasons for every term, capped at 1.0 (F10)."""
+    from pramaan.schemas import Alert, ApplicationResult
+    def f(i, sev):
+        return Finding(finding_id=f"T1-R-X{i}-APP", app_id="T1", source="rule", rule_id=f"R-X{i}", title="t", reason="t",
+                       severity=sev, lane="human_review")
+    base = dict(app_id="T1", category="eoa_existing_regular", academic_year="2026-27", run_at="2026-10-26T00:00:00",
+                lane="clear", documents=[], findings=[], verifications=[], alerts=[], audit_head_hash="h", seconds_taken=0.1)
+    w = {"priority_weights": {"high": 0.25, "medium": 0.1, "low": 0.03, "suspected_anomaly": 0.2, "old_building": 0.1,
+                              "old_building_years": 30, "noc_intake_above_approved": 0.15}}
+    assert m.score(ApplicationResult(**base), None, w, TODAY) == (0.0, [])
+    rec = {"building_completion_date": "1980-06-01", "approved_programs": [{"course": "CSE", "intake_prev": "90"}, {"course": "CSE", "intake_prev": "60"}]}
+    noc = DocumentRecord(doc_id="T1-noc", filename="n.pdf", path="n.pdf", sha256="0", doc_type="noc_format2",
+                         tables={"programs": [{"course": "CSE", "intake_curr": "90"}, {"course": "CSE", "intake_curr": "60"}]})
+    r = ApplicationResult(**{**base, "documents": [noc], "findings": [f(1, "high"), f(2, "medium"), f(3, "low")]})
+    s, why = m.score(r, rec, w, TODAY)
+    assert abs(s - 0.48) < 1e-9 and len(why) == 4, (s, why)          # 0.25 + 0.1 + 0.03 + old building 0.1; equal intakes not flagged
+    noc.tables["programs"][1]["intake_curr"] = "120"
+    al = Alert(alert_id="T1-AL1", app_id="T1", kind="suspected_anomaly", message="m", created_at="x", due_by="2026-10-28")
+    r = ApplicationResult(**{**base, "documents": [noc], "alerts": [al], "findings": [f(i, "high") for i in range(4)]})
+    s, why = m.score(r, rec, w, TODAY)
+    assert s == 1.0 and any("NOC" in x for x in why) and any("capped" in x for x in why), (s, why)
+
+
+def t_reuse(m):
+    """reuse.check_reuse: certificate number and photo reused by a DIFFERENT app; re-run never matches itself (F8)."""
+    from PIL import Image
+    db = os.path.join(TMP, "reuse.db")
+    if os.path.exists(db):
+        os.remove(db)
+    img = Image.new("RGB", (64, 64), (200, 200, 200)); img.paste((30, 30, 30), (0, 0, 32, 64))
+    ph = os.path.join(TMP, "campus.jpg"); img.save(ph)
+    def doc(app_id, no, sha):
+        return DocumentRecord(doc_id=f"{app_id}-fire_cert", filename="f.pdf", path="f.pdf", sha256=sha, doc_type="fire_cert",
+                              fields={"certificate_no": ExtractedField(name="certificate_no", value=no)})
+    a = APP.model_copy(update={"app_id": "TA", "photos": [ph]}); b = APP.model_copy(update={"app_id": "TB", "photos": [ph]})
+    assert m.check_reuse(a, [doc("TA", "FS/1", "s1")], db) == []
+    assert m.check_reuse(a, [doc("TA", "FS/1", "s1")], db) == []          # same app again: no self-match
+    out = m.check_reuse(b, [doc("TB", "FS/1", "s2")], db)
+    ids = sorted(f.rule_id for f in out)
+    assert ids == ["X-REUSE-CERT", "X-REUSE-PHOTO"], ids
+    assert all(f.lane == "human_review" and f.severity == "high" and "TA" in f.evidence[0].text for f in out)
+    assert m.check_reuse(a, [doc("TA", "FS/1", "s1")], db) == []          # earlier app re-run: unchanged
+    assert m.check_reuse(b, [doc("TB", "FS/9", "s3")], db)[0].rule_id == "X-REUSE-PHOTO"   # cert changed, photo still shared
+
 class _Skip(Exception):
     pass
 
 
-MODULE = {"signature": "forensics"}   # test name -> module in pramaan/
+MODULE = {"signature": "forensics", "priority": "priority", "reuse": "reuse"}   # test name -> module in pramaan/
 
 
 TESTS = {"ingest": t_ingest, "classify_extract": t_classify_extract, "rules": t_rules, "crosscheck": t_crosscheck,
          "triage": t_triage, "audit": t_audit, "report": t_report, "pipeline": t_pipeline,
-         "signature": t_signature}
+         "signature": t_signature, "priority": t_priority, "reuse": t_reuse}
 
 if __name__ == "__main__":
     want = sys.argv[1:] or list(TESTS)

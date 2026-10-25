@@ -34,6 +34,9 @@ SCENARIOS = {
     "APP-10": (["stamp_50", "sworn_after_submit"], ["R-FLD-affidavit_2-stamp_value", "X-SWORN-AFTER-SUBMIT"], "human_review"),
     "APP-11": (["fire_not_in_issuer_db"], [], "clear"),
     "APP-12": (["scanned_struct_tampered"], ["F-TAMPER"], "human_review"),
+    # F8 reuse across applications: needs the source app processed first (sorted order does that)
+    "APP-13": (["photo_reused_from_app09"], ["X-REUSE-PHOTO"], "human_review"),
+    "APP-14": (["fire_no_reused_from_app03"], ["X-REUSE-CERT", "V-issuer_portal"], "human_review"),
 }
 
 
@@ -71,6 +74,7 @@ def build(out: str, today: date, seed: int = 11) -> dict:
     rng = random.Random(seed)
     os.makedirs(os.path.join(out, "apps"), exist_ok=True)
     records, fire_db, uni_db, truth = {}, {}, {}, {}
+    shared = {}                                         # values later apps reuse (F8)
     signing = can_sign()
     pki = make_pki(os.path.join(out, "pki")) if signing else None
     ay0 = today.year if today.month >= 7 else today.year - 1
@@ -109,6 +113,10 @@ def build(out: str, today: date, seed: int = 11) -> dict:
         real_valid = det["valid_until"]
         if "expired_fire" in defects:
             det["issue_date"] = today - timedelta(days=365 * 3 + 40); det["valid_until"] = today - timedelta(days=40); real_valid = det["valid_until"]
+        if app_id == "APP-03":
+            shared["fire_no"] = det["fire_no"]
+        if "fire_no_reused_from_app03" in defects:
+            det["fire_no"] = shared["fire_no"]
         fire_inst = inst
         if "name_mismatch" in defects:
             fire_inst = dict(inst); fire_inst["institute_name"] = inst["institute_name"].split()[0] + " Global Academy"
@@ -135,7 +143,7 @@ def build(out: str, today: date, seed: int = 11) -> dict:
                 _sidecar_from_pdf(p, jp); os.remove(p); docs["structural_cert"] = jp
         if signing and "affidavit_2" in docs:
             sign_pdf(docs["affidavit_2"], docs["affidavit_2"], pki)
-        if "fire_cert" in docs and "fire_not_in_issuer_db" not in defects:
+        if "fire_cert" in docs and not {"fire_not_in_issuer_db", "fire_no_reused_from_app03"} & set(defects):
             fire_db[det["fire_no"]] = {"valid_until": real_valid.isoformat(), "institute_name": inst["institute_name"]}
         uni_db[det["noc_ref"]] = {"institute_name": inst["institute_name"]}
         pid = inst["permanent_id"]
@@ -154,6 +162,10 @@ def build(out: str, today: date, seed: int = 11) -> dict:
             if "photo_far" in defects and k == 0:
                 lat += 0.45
             pp = os.path.join(pdir, f"campus_{k + 1}.jpg"); im = _photo(pp, r, lat, lon); photos.append(pp)
+        if app_id == "APP-09":
+            shared["photo"] = photos[0]
+        if "photo_reused_from_app09" in defects:            # same picture, re-tagged with this campus GPS
+            _photo(photos[0], r, inst["latitude"], inst["longitude"], seed_img=Image.open(shared["photo"]).copy())
         if "photo_duplicate" in defects:
             pp = os.path.join(pdir, "campus_3.jpg"); _photo(pp, r, inst["latitude"], inst["longitude"], seed_img=Image.open(photos[1]).copy()); photos.append(pp)
         man = {"app_id": app_id, "category": "eoa_existing_regular", "academic_year": inst["academic_year"], "permanent_id": pid,

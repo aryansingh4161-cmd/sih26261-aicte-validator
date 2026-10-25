@@ -49,6 +49,8 @@ def render_html(r: ApplicationResult) -> str:
     parts = [f'<div class="hdr"><h1>Pramaan AI - Application advisory report</h1><p>{E(r.app_id)} | {E(r.category)} | '
              f'Academic year {E(r.academic_year)} | run {E(r.run_at)}</p></div><div class="wrap">',
              f'<div class="badge" style="background:{col}">{E(label)}</div>',
+             f'<p><b>Inspection priority {r.priority:.2f}</b> <span class="small">(0..1, designed weights, an assumption; orders the queue only)</span></p>'
+             + ''.join(f'<div class="small">- {E(x)}</div>' for x in r.priority_reasons),
              '<p class="note">AI advisory only. A human officer decides. This tool never rejects an application.</p>']
     for lane, title in (("human_review", "Needs human review"), ("return_for_rectification", "Return for rectification"), ("info", "For information")):
         fs = [f for f in r.findings if f.lane == lane]

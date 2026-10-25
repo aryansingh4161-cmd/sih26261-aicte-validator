@@ -158,3 +158,5 @@ class ApplicationResult(_Base):
     audit_head_hash: str
     seconds_taken: float
     notes: List[str] = Field(default_factory=list)
+    priority: float = 0.0                      # F10 inspection priority 0..1 (designed weights, ASSUMPTION)
+    priority_reasons: List[str] = Field(default_factory=list)

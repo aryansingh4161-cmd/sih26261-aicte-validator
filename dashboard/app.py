@@ -56,9 +56,9 @@ if not results:
     st.info("No results yet. Click 'Run pipeline on demo applications' in the sidebar.")
     st.stop()
 lane_f = st.sidebar.multiselect("Lane", list(LANE), default=list(LANE))
-rows = [r for r in results if r["lane"] in lane_f]
+rows = sorted((r for r in results if r["lane"] in lane_f), key=lambda r: -r.get("priority", 0.0))
 st.subheader("Queue")
-st.dataframe([{"application": r["app_id"], "lane": LANE[r["lane"]][0], "findings": len(r["findings"]),
+st.dataframe([{"application": r["app_id"], "priority": r.get("priority", 0.0), "lane": LANE[r["lane"]][0], "findings": len(r["findings"]),
                "high": sum(f["severity"] == "high" for f in r["findings"]),
                "earliest due": min((a["due_by"] for a in r["alerts"]), default="-"), "seconds": r["seconds_taken"]} for r in rows],
              use_container_width=True, hide_index=True)

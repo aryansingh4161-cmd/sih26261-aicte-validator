@@ -38,3 +38,10 @@
 - Tests (measured): headless server on :8599 -> / 200, /_stcore/health ok, log clean; streamlit AppTest ran app.py and selected all 12 demo apps: 0 exceptions, 0 st.error.
 - Warnings only: use_container_width deprecated (use width='stretch'); sqlite ResourceWarning (unclosed audit.db connections). Not fixed (warnings, not errors).
 - UNTESTED: real browser clicks (Decision selectbox submit, file upload), MPS training.
+
+## WK2 F10 priority + F8 reuse (local Mac, Python 3.14.6)
+- Changed: schemas.ApplicationResult +priority/+priority_reasons; NEW pramaan/priority.py (score(result, record, settings, today=None)), pramaan/reuse.py (check_reuse, SQLite index next to audit.db = output/reuse.db; compares only with apps FIRST indexed earlier, so re-runs are stable and never self-match); pipeline calls reuse after crosscheck and priority before the final audit row; report header shows priority + reasons; dashboard queue has a priority column, sorted desc; settings.yaml priority_weights (designed weights, ASSUMPTION, not trained); bundles APP-13 (APP-09 campus_1 photo, own GPS) and APP-14 (APP-03 fire certificate no, not in mock fire db).
+- Tests (measured): test_synth ALL PASSED; test_contracts 11/11 PASS (new t_priority, t_reuse); pipeline re-run twice gives identical lanes/priorities; dashboard AppTest 0 exceptions, queue sorted by priority.
+- Numbers (measured, eval/results.csv, synthetic): extract.field_acc.all 0.9972 (n=1800); extract.type_acc.all 1.0 (n=300); demo.recall 1.0 (n=18); demo.unexpected_findings 0 (n=14 apps); demo.lane_agreement 0.9286 (n=14; APP-12 clear because no tamper weights here); demo.seconds_per_app 0.34. Priority (designed): top APP-07 0.55; APP-01/APP-11 0.00.
+- UNTESTED / notes: reuse only flags the LATER application (APP-03, APP-09 not flagged back); ahash tolerance 6 bits untested on real photos; priority weights not validated against any officer ranking; reference/pramaan/pipeline.py is now OLDER than pramaan/pipeline.py - do not run use_reference pipeline.
+- Teammates: pull main, then python -m pramaan.synth.bundles --today 2026-10-26 (now 14 apps) and delete output/reuse.db before a clean demo run.

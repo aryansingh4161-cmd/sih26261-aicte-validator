@@ -19,7 +19,9 @@ from .forensics import pdf_structure_checks, signature_check
 from .ingest import ingest
 from .issuer import load_records, verify_document
 from .photo_check import check_photos
+from .priority import score as priority_score
 from .report import build_report
+from .reuse import check_reuse
 from .rules import run_rules
 from .schemas import DOC_TYPES, Application, ApplicationResult, Evidence, Finding
 from .tamper_model import available, tamper_check
@@ -50,7 +52,8 @@ def _vfinding(app, v):
 
 def run_application(manifest_path: str, out_dir: str = "output", today: date | None = None, audit_db: str = "output/audit.db",
                     records_path: str = "data/aicte_records.json", specs_dir: str = "config/doc_specs",
-                    rulepack: str = "config/rulepack_eoa_existing.yaml", weights: str = "data/models/tamper_unet.pt") -> ApplicationResult:
+                    rulepack: str = "config/rulepack_eoa_existing.yaml", weights: str = "data/models/tamper_unet.pt",
+                    reuse_db: str | None = None) -> ApplicationResult:
     t0, today = time.time(), today or date.today()
     st = _settings()
     with open(manifest_path) as f:
@@ -95,6 +98,9 @@ def run_application(manifest_path: str, out_dir: str = "output", today: date | N
     findings += run_rules(app, docs, vers, record, rulepack, today)
     log.append(*SYSTEM, "rules applied", app.app_id, {"rulepack": rulepack, "sha256": sha256_file(rulepack), "today": today.isoformat()})
     findings += run_crosscheck(app, docs, record, today)
+    reuse_db = reuse_db or os.path.join(os.path.dirname(audit_db) or ".", "reuse.db")
+    findings += check_reuse(app, docs, reuse_db)
+    log.append(*SYSTEM, "record checked", app.app_id, {"source": "reuse index", "db": reuse_db})
     if app.photos:
         findings += check_photos(app, today, float(st.get("photo_max_km", 1.0)), float(st.get("blur_threshold", 60.0)))
     seen: dict = {}
@@ -106,10 +112,13 @@ def run_application(manifest_path: str, out_dir: str = "output", today: date | N
     alerts = make_alerts(app, findings, vers, today)
     for a in alerts:
         log.append(*SYSTEM, "alert", app.app_id, {"alert_id": a.alert_id, "kind": a.kind, "due_by": a.due_by})
-    head = log.append(*SYSTEM, "observation", app.app_id, {"lane": lane, "findings": len(findings), "advisory": True})
     res = ApplicationResult(app_id=app.app_id, category=app.category, academic_year=app.academic_year, run_at=now_iso(), lane=lane,
-                            documents=docs, findings=findings, verifications=vers, alerts=alerts, audit_head_hash=head,
+                            documents=docs, findings=findings, verifications=vers, alerts=alerts, audit_head_hash="",
                             seconds_taken=round(time.time() - t0, 2), notes=notes)
+    pr, why = priority_score(res, record, st, today)
+    head = log.append(*SYSTEM, "observation", app.app_id, {"lane": lane, "findings": len(findings), "advisory": True,
+                                                          "priority": pr, "priority_weights": "designed, assumption"})
+    res = res.model_copy(update={"priority": pr, "priority_reasons": why, "audit_head_hash": head})
     build_report(res, out_dir)
     return res
 
@@ -121,4 +130,4 @@ if __name__ == "__main__":
     td = date.fromisoformat(a.today) if a.today else None
     for m in a.manifests:
         r = run_application(m, a.out, td)
-        print(f"{r.app_id}: {r.lane}  findings={len(r.findings)} alerts={len(r.alerts)}  {r.seconds_taken}s  -> {a.out}/{r.app_id}.report.html")
+        print(f"{r.app_id}: {r.lane}  priority={r.priority:.2f}  findings={len(r.findings)} alerts={len(r.alerts)}  {r.seconds_taken}s  -> {a.out}/{r.app_id}.report.html")
