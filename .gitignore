@@ -227,3 +227,9 @@ data/real_*
 *.ckpt
 .env
 
+
+# Pramaan
+real_samples/
+output/
+data/demo/
+*.pt

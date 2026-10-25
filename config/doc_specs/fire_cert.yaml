@@ -1,0 +1,10 @@
+doc_type: fire_cert
+match_any: ["FIRE SAFETY CERTIFICATE", "FIRE NOC", "NO OBJECTION CERTIFICATE (FIRE)"]
+fields:
+  certificate_no:    {labels: ['Certificate No'], patterns: ['Certificate No\.?\s*:\s*(\S+)'], type: text}
+  issuing_authority: {labels: ['Issued by'], patterns: ['Issued by\s*:\s*(.+)'], type: text}
+  institute_name:    {join: true, patterns: ['building of\s+(.+?),'], type: text}
+  issue_date:        {labels: ['Date of Issue'], patterns: ['Date of Issue\s*:\s*(\S+)'], type: date}
+  valid_until:       {labels: ['Valid Until', 'Valid up to', 'Valid upto'], patterns: ['Valid (?:Until|up ?to)\s*:\s*(\S+)'], type: date}
+expected_producers: []
+expected_fonts: []

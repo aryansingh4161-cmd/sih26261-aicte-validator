@@ -1,0 +1,115 @@
+# Rule pack v0 for Extension of Approval (existing institutions). OWNER: Geetansh.
+# clause_verified: true ONLY for rows a human marked "ok" in the rules sheet (R01-R10, checked Sat 24 Oct).
+# R53/R54 are quoted from the sheet but NOT yet human-checked -> false. Rules with aph_clause null are our own
+# design checks (no Handbook clause claimed).
+rules:
+  - id: R-MISS-affidavit_2
+    type: required_doc
+    applies_to: [eoa_existing_regular, intake_increase]
+    params: {doc_type: affidavit_2}
+    severity: high
+    lane: return_for_rectification
+    title: Affidavit 2 missing
+    message: An Affidavit 2 on an e-stamp paper of Rs. 100 is required for Extension of Approval.
+    aph_clause: "ANNEXURE-2 2.1 i. - An Affidavit 2 with digital signature of the Chairman/ Secretary of the Trust/ Society/ Company on an e-stamp paper of Rs. 100/-"
+    clause_verified: true
+  - id: R-FLD-affidavit_2-stamp_value
+    type: value_equals
+    applies_to: [eoa_existing_regular, intake_increase]
+    params: {doc_type: affidavit_2, field: stamp_value, expected: "100"}
+    severity: medium
+    lane: return_for_rectification
+    title: Affidavit 2 stamp value is not Rs. 100
+    message: The e-stamp value read on Affidavit 2 is not Rs. 100.
+    aph_clause: "ANNEXURE-2 2.1 i. - An Affidavit 2 with digital signature of the Chairman/ Secretary of the Trust/ Society/ Company on an e-stamp paper of Rs. 100/-"
+    clause_verified: true
+  - id: R-SIG-affidavit_2
+    type: signature_required
+    applies_to: [eoa_existing_regular, intake_increase]
+    params: {doc_type: affidavit_2}
+    severity: medium
+    lane: return_for_rectification
+    title: Affidavit 2 has no valid digital signature
+    message: No digital signature was found or validated on Affidavit 2.
+    aph_clause: "ANNEXURE-2 2.1 i. - An Affidavit 2 with digital signature of the Chairman/ Secretary of the Trust/ Society/ Company on an e-stamp paper of Rs. 100/-"
+    clause_verified: true
+  - id: R-MISS-fire_cert
+    type: required_doc
+    applies_to: [eoa_existing_regular, intake_increase]
+    params: {doc_type: fire_cert}
+    severity: high
+    lane: return_for_rectification
+    title: Fire Safety Certificate missing
+    message: A valid Fire Safety Certificate issued by the Competent Authority is required.
+    aph_clause: "ANNEXURE-2 2.1 v. - A valid Fire Safety Certificate issued by the Competent Authority."
+    clause_verified: true
+  - id: R-FLD-fire_cert-valid_until
+    type: field_present
+    applies_to: [eoa_existing_regular, intake_increase]
+    params: {doc_type: fire_cert, field: valid_until}
+    severity: medium
+    lane: human_review
+    title: Fire certificate validity date not readable
+    message: The validity date on the Fire Safety Certificate could not be read; a person should check it.
+    aph_clause: null
+    clause_verified: false
+  - id: R-EXP-fire_cert
+    type: not_expired
+    applies_to: [eoa_existing_regular, intake_increase]
+    params: {doc_type: fire_cert, field: valid_until}
+    severity: high
+    lane: return_for_rectification
+    title: Fire Safety Certificate expired
+    message: The Fire Safety Certificate is past its validity date.
+    aph_clause: "ANNEXURE-2 2.1 v. - A valid Fire Safety Certificate issued by the Competent Authority."
+    clause_verified: true
+  - id: R-MISS-structural_cert
+    type: conditional_required
+    applies_to: [eoa_existing_regular, intake_increase]
+    params: {doc_type: structural_cert, when_record_older_than: {key: building_completion_date, years: 30}}
+    severity: high
+    lane: return_for_rectification
+    title: Structural Stability Certificate missing (building older than 30 years)
+    message: The building is more than thirty years from its completion certificate, so a valid Structural Stability Certificate is required.
+    aph_clause: "ANNEXURE-2 2.1 iv. - Valid Structural Stability Certificate from the registered Structural Engineer, if the Building is more than thirty years from the issue of Completion Certificate"
+    clause_verified: true
+  - id: R-EXP-structural_cert
+    type: age_validity
+    applies_to: [eoa_existing_regular, intake_increase]
+    params: {doc_type: structural_cert, issue_field: issue_date, max_years: 5, validity_field: validity_years}
+    severity: high
+    lane: return_for_rectification
+    title: Structural Stability Certificate out of validity
+    message: The certificate is older than its validity (the smaller of 5 years and the period written on the certificate).
+    aph_clause: "6.17 h. - Structural Stability Certificate is valid for a period of FIVE years from the date of issue."
+    clause_verified: false
+  - id: R-REC-ter_paid
+    type: record_flag
+    applies_to: [eoa_existing_regular, intake_increase]
+    params: {key: ter_paid, expected: true}
+    severity: medium
+    lane: return_for_rectification
+    title: Fee payment for this academic year not found in records
+    message: The (mock) AICTE records show no payment for Extension of Approval for this academic year.
+    aph_clause: "ANNEXURE-2 2.1 ii. - Copy of pay receipt print made on AICTE Web-Portal if any, in respect of Extension of Approval for the respective Academic Year."
+    clause_verified: true
+  - id: R-FLD-noc_format2-academic_year
+    type: year_match
+    applies_to: [eoa_existing_regular, intake_increase]
+    params: {doc_type: noc_format2, field: academic_year}
+    severity: medium
+    lane: human_review
+    title: University NOC is for a different academic year
+    message: The academic year on the university NOC does not match the year applied for.
+    aph_clause: null
+    clause_verified: false
+  - id: R-MISS-eoa_letter
+    type: required_doc
+    applies_to: [eoa_existing_regular, intake_increase]
+    params: {doc_type: eoa_letter}
+    severity: info
+    lane: info
+    title: Previous EoA letter not provided
+    message: Without last year's approval letter the intake cross-checks are skipped.
+    aph_clause: null
+    clause_verified: false

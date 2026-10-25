@@ -1,0 +1,10 @@
+doc_type: structural_cert
+match_any: ["Safety certificate of Building", "STRUCTURAL STABILITY", "STRUCTURAL ENGINEER"]
+fields:
+  certificate_no:    {patterns: ['^No\.?\s*:\s*(\S+)'], type: text}
+  issue_date:        {patterns: ['Date\s*:\s*(\d{1,2}[-/.]\d{1,2}[-/.]\d{4})'], type: date}
+  validity_years:    {patterns: ['valid for a period of\s*(\d+)'], type: int}
+  issuing_authority: {first_line: true, type: text}
+  institute_name:    {patterns: ['^To,\s*(.+?),'], type: text}
+expected_producers: []
+expected_fonts: []

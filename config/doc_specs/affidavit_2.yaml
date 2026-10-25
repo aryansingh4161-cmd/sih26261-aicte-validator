@@ -1,0 +1,13 @@
+doc_type: affidavit_2
+match_any: ["AFFIDAVIT 2", "AFFIDAVIT-2", "AFFIDAVIT - 2"]
+fields:
+  stamp_value:           {labels: ['Stamp value'], patterns: ['Stamp value\s*:?\s*(?:Rs\.?\s*)?(\d+)'], type: int}
+  stamp_no:              {labels: ['E-Stamp certificate no'], patterns: ['certificate no\s*:?\s*(IN-[A-Z0-9]+)'], type: text}
+  signatory_name:        {patterns: ['^I,\s*([^,]+),'], type: text}
+  signatory_designation: {patterns: ['^I,\s*[^,]+,\s*([^,]+?)\s+of\s'], type: text}
+  institute_name:        {join: true, patterns: ['running\s+(.+?)\s*(?:\(|$)'], type: text}
+  application_id:        {patterns: ['Application Id\s*:?\s*(1-\d+)'], type: text}
+  sworn_date:            {patterns: ['Sworn before me on\s*(\S+)'], type: date}
+  notary_name:           {patterns: ['Notary\s*:\s*(.+)'], type: text}
+expected_producers: []
+expected_fonts: []

@@ -1,0 +1,15 @@
+doc_type: noc_format2
+match_any: ["NO OBJECTION CERTIFICATE"]
+fields:
+  university_name: {labels: ['Issued by'], patterns: ['Issued by\s*:\s*(.+)'], type: text}
+  institute_name:  {join: true, patterns: ['no objection to\s+(.+?)(?:\s+offering|$)'], type: text}
+  ref_no:          {patterns: ['Ref\.? No\.?\s*:?\s*(\S+)'], type: text}
+  issue_date:      {patterns: ['Date\s*:\s*(\d{1,2}[-/.]\d{1,2}[-/.]\d{4})'], type: date}
+  academic_year:   {patterns: ['Academic Year\s*:?\s*(\d{4}-\d{2})'], type: text}
+tables:
+  programs:
+    columns:
+      course:      {match: ['programme', 'course'], pick: first}
+      intake_curr: {match: ['intake'], pick: last}
+expected_producers: []
+expected_fonts: []

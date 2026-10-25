@@ -1,0 +1,7 @@
+# All numbers here are ASSUMPTIONS (configurable), not AICTE rules.
+sla_days: {high: 2, medium: 5, low: 7, info: 10}
+expiry_warning_days: 60
+tamper_threshold: 0.5          # replaced by the value chosen on validation data (eval_model.py prints it)
+name_match_threshold: 0.85     # name similarity below this = mismatch
+photo_max_km: 1.0              # photo GPS farther than this from declared location = flag
+blur_threshold: 60.0           # variance of Laplacian below this = blurry (tune on demo photos)
