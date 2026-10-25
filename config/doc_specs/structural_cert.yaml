@@ -1,10 +1,35 @@
 doc_type: structural_cert
 match_any: ["Safety certificate of Building", "STRUCTURAL STABILITY", "STRUCTURAL ENGINEER"]
 fields:
-  certificate_no:    {patterns: ['^No\.?\s*:\s*(\S+)'], type: text}
-  issue_date:        {patterns: ['Date\s*:\s*(\d{1,2}[-/.]\d{1,2}[-/.]\d{4})'], type: date}
-  validity_years:    {patterns: ['valid for a period of\s*(\d+)'], type: int}
+  # PROPOSAL, NOT TESTED against the project.
+  # Digits only, then whitespace or end of block. "No: - 11o" stays unmatched.
+  certificate_no:
+    patterns:
+      - '^No\s*\.?\s*[:;]\s*[-–—]?\s*(\d+)(?=\s|$)'
+    type: text
+  # Needs a "Date:" label and a 4-digit year. "Date: - 9-4-24" cannot match.
+  # "Dated 30-01-2024" and "dated 04-03-2024" have no colon, so they cannot match.
+  issue_date:
+    patterns:
+      - '(?<![A-Za-z])Date\s*[:;]\s*[-–—]?\s*(\d{1,2}[-/.]\d{1,2}[-/.]\d{4})(?!\d)'
+    type: date
+  validity_years:
+    patterns:
+      - 'valid\s+for\s+(?:a\s+)?period\s+of\s*[:\-]?\s*(\d+)'
+    type: int
+  # Unchanged. First block exactly as OCR read it (confidence 0.7). Not verified.
   issuing_authority: {first_line: true, type: text}
-  institute_name:    {patterns: ['^To,\s*(.+?),'], type: text}
+  # Searches all blocks joined with single spaces.
+  # Pattern 1 (synthetic): "To, <institute>, <address>".
+  # Pattern 2 (real layout): text after the "Date: ..." header, up to whitespace + digit.
+  #   The capture cannot contain digits, ":" or ";" and is at most 80 characters,
+  #   so it cannot run into the address, "Sub:" or "Ref:". If that is not possible,
+  #   there is no match and the field is missing.
+  institute_name:
+    join: true
+    patterns:
+      - '(?:^|\s)To\s*,\s*([^,\n]+?)\s*,'
+      - '(?<![A-Za-z])Date\s*[:;]\s*[-–—]?\s*\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}\s+([A-Za-z][^\d:;]{3,80}?)\s+(?=\d)'
+    type: text
 expected_producers: []
 expected_fonts: []
