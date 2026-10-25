@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import re
 import sqlite3
 
 import numpy as np
@@ -15,8 +16,12 @@ from PIL import Image
 
 from .photo_check import ahash
 from .schemas import Application, DocumentRecord, Evidence, Finding
+from .util import similarity
 
 CERT_FIELDS = ("certificate_no", "ref_no", "stamp_no")
+CERT_MIN_LEN = 6                   # WK16: shorter numbers (e.g. 3-digit municipal certificate numbers) collide by chance
+ISSUER_FIELD = {"fire_cert": "issuing_authority", "structural_cert": "issuing_authority", "noc_format2": "university_name"}
+ISSUER_SIM = 0.85                  # same issuer / university required (doc types without an issuer field: number only)
 # Chosen on the demo photos (WK15, n=35 photos, 593 unrelated pairs): re-saved / resized / brightness / contrast copies
 # <= 0.025 and <= 16 bits; closest unrelated pair 0.205 (11 bits). A 3% crop (0.154) is NOT caught (margin too thin).
 PHOTO_MAX_BITS = 20                # ahash (256 bits) distance: a loose first filter only
@@ -53,8 +58,10 @@ def _items(app: Application, docs: list[DocumentRecord]) -> list[tuple[str, str,
         out.append(("sha256", d.sha256, d.doc_id))
         for f in CERT_FIELDS:
             v = d.fields.get(f)
-            if v and v.value and v.value.strip():
-                out.append(("cert", f"{d.doc_type}:{f}:{v.value.strip().upper()}", d.doc_id))
+            num = (v.value or "").strip().upper() if v else ""
+            if len(re.sub(r"[^A-Z0-9]", "", num)) >= CERT_MIN_LEN:     # the key also fixes the document type
+                iss = d.fields.get(ISSUER_FIELD.get(d.doc_type, ""))
+                out.append(("cert", f"{d.doc_type}:{f}:{num}", f"{d.doc_id}|{(iss.value or '') if iss else ''}"))
     for p in app.photos:
         try:
             out.append(("photo", photo_signature(p), os.path.basename(p)))
@@ -86,6 +93,11 @@ def check_reuse(app: Application, docs: list[DocumentRecord], index_db: str = "o
                     same, bits, mad = photo_distance(key, k)
                     if same or (bits <= PHOTO_MAX_BITS and mad <= PHOTO_MAX_MAD):
                         hits.append((a, f"{r}; {'same file' if same else f'ahash {bits} bits, difference {mad:.3f}'}"))
+            elif kind == "cert":
+                ref, my_iss = ref.split("|", 1)
+                need = key.split(":", 1)[0] in ISSUER_FIELD
+                hits = [(a, r.split("|", 1)[0]) for a, k, r in c.execute(earlier, (seq, kind)) if k == key and "|" in r
+                        and (not need or (my_iss and similarity(my_iss, r.split("|", 1)[1]) >= ISSUER_SIM))]
             else:
                 hits = [(a, r) for a, k, r in c.execute(earlier, (seq, kind)) if k == key]
             rule = "X-REUSE-PHOTO" if kind == "photo" else "X-REUSE-CERT"

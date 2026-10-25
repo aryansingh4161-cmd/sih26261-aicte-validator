@@ -161,19 +161,25 @@ def t_reuse(m):
         os.remove(db)
     img = Image.new("RGB", (64, 64), (200, 200, 200)); img.paste((30, 30, 30), (0, 0, 32, 64))
     ph = os.path.join(TMP, "campus.jpg"); img.save(ph)
-    def doc(app_id, no, sha):
+    def doc(app_id, no, sha, auth="Demo City Fire Service (synthetic)"):
         return DocumentRecord(doc_id=f"{app_id}-fire_cert", filename="f.pdf", path="f.pdf", sha256=sha, doc_type="fire_cert",
-                              fields={"certificate_no": ExtractedField(name="certificate_no", value=no)})
+                              fields={"certificate_no": ExtractedField(name="certificate_no", value=no),
+                                      "issuing_authority": ExtractedField(name="issuing_authority", value=auth)})
     a = APP.model_copy(update={"app_id": "TA", "photos": [ph]}); b = APP.model_copy(update={"app_id": "TB", "photos": [ph]})
-    assert m.check_reuse(a, [doc("TA", "FS/1", "s1")], db) == []
-    assert m.check_reuse(a, [doc("TA", "FS/1", "s1")], db) == []          # same app again: no self-match
-    out = m.check_reuse(b, [doc("TB", "FS/1", "s2")], db)
+    NO = "FS/2026/4711"
+    assert m.check_reuse(a, [doc("TA", NO, "s1")], db) == []
+    assert m.check_reuse(a, [doc("TA", NO, "s1")], db) == []          # same app again: no self-match
+    out = m.check_reuse(b, [doc("TB", NO, "s2")], db)
     ids = sorted(f.rule_id for f in out)
     assert ids == ["X-REUSE-CERT", "X-REUSE-PHOTO"], ids
     assert all(f.lane == "human_review" and f.severity == "high" and "TA" in f.evidence[0].text for f in out)
-    assert m.check_reuse(a, [doc("TA", "FS/1", "s1")], db) == []          # earlier app re-run: unchanged
-    assert m.check_reuse(b, [doc("TB", "FS/9", "s3")], db)[0].rule_id == "X-REUSE-PHOTO"   # cert changed, photo still shared
-
+    assert m.check_reuse(a, [doc("TA", NO, "s1")], db) == []          # earlier app re-run: unchanged
+    assert m.check_reuse(b, [doc("TB", "FS/2026/9999", "s3")], db)[0].rule_id == "X-REUSE-PHOTO"   # cert changed, photo still shared
+    # WK16: short numbers and a different issuer never match
+    c = APP.model_copy(update={"app_id": "TC"}); e = APP.model_copy(update={"app_id": "TE"})
+    m.check_reuse(c, [doc("TC", "585", "s4")], db)
+    assert m.check_reuse(e, [doc("TE", "585", "s5")], db) == []                                    # < 6 characters
+    assert m.check_reuse(e, [doc("TE", NO, "s6", auth="Other District Fire Office (synthetic)")], db) == []   # other issuer
 
 def t_area(m):
     """rules area_min (F9) on a real synthetic area_statement + tools/norms_to_yaml uses ONLY rows with checked = ok."""
@@ -377,13 +383,26 @@ def t_reuse_photo_strict(m):
     out = m.check_reuse(c, [], db)
     assert [f.rule_id for f in out] == ["X-REUSE-PHOTO"] and "RA" in out[0].evidence[0].text, [(f.rule_id, f.reason) for f in out]
 
+
+def t_reference_sync(m):
+    """WK16: every module that exists in BOTH pramaan/ and reference/pramaan/ (and dashboard/app.py) must be identical,
+    so python -m tools.use_reference can never silently undo work. Prints which files differ."""
+    import filecmp
+    pairs = [(os.path.join("pramaan", f), os.path.join("reference", "pramaan", f))
+             for f in sorted(os.listdir(os.path.join("reference", "pramaan"))) if f.endswith(".py")]
+    pairs.append((os.path.join("dashboard", "app.py"), os.path.join("reference", "dashboard", "app.py")))
+    bad = [a for a, b in pairs if os.path.exists(a) and os.path.exists(b) and not filecmp.cmp(a, b, shallow=False)]
+    if bad:
+        print("  differ from reference/: " + ", ".join(bad) + "  (copy the working version into reference/)")
+    assert not bad, bad
+
 class _Skip(Exception):
     pass
 
 
 MODULE = {"signature": "forensics", "priority": "priority", "reuse": "reuse", "area": "rules", "issuer_webhook": "issuer_async", "retention": "audit", "masking": "privacy",
           "metadata": "metadata_forensics", "table_borderless": "classify_extract",
-          "reuse_photo_strict": "reuse"}   # test name -> module in pramaan/
+          "reuse_photo_strict": "reuse", "reference_sync": "schemas"}   # test name -> module in pramaan/
 
 
 TESTS = {"ingest": t_ingest, "classify_extract": t_classify_extract, "rules": t_rules, "crosscheck": t_crosscheck,
@@ -392,7 +411,8 @@ TESTS = {"ingest": t_ingest, "classify_extract": t_classify_extract, "rules": t_
          "area": t_area, "issuer_webhook": t_issuer_webhook,
          "retention": t_retention, "masking": t_masking,
          "metadata": t_metadata, "table_borderless": t_table_borderless,
-         "reuse_photo_strict": t_reuse_photo_strict}
+         "reuse_photo_strict": t_reuse_photo_strict,
+         "reference_sync": t_reference_sync}
 
 if __name__ == "__main__":
     want = sys.argv[1:] or list(TESTS)

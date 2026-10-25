@@ -34,8 +34,9 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", required=True); ap.add_argument("--weights", required=True)
     ap.add_argument("--out", default="eval/results.csv"); ap.add_argument("--n_max", type=int, default=None)
+    ap.add_argument("--name", default="unet", help="metric id prefix, e.g. unet_v2 (WK16)")
     a = ap.parse_args()
     dev = "cuda" if torch.cuda.is_available() else "cpu"
     model = load(a.weights, dev)
     # pixel mask = probability above 0.5 (fixed, stated in the notes); image threshold chosen on val inside evaluate()
-    evaluate("unet", predict_fn(model, dev), a.data, lambda p, thr: p > 0.5, a.out, a.n_max)
+    evaluate(a.name, predict_fn(model, dev), a.data, lambda p, thr: p > 0.5, a.out, a.n_max)

@@ -16,13 +16,14 @@ import torch.nn.functional as F
 from PIL import Image
 from torch.utils.data import DataLoader, Dataset
 
+from .augment import augment
 from .features import IN_CHANNELS, to_input
 from .metrics import auc
 
 
 class Crops(Dataset):
-    def __init__(self, rows, root, size=512, train=True):
-        self.rows, self.root, self.size, self.train = rows, root, size, train
+    def __init__(self, rows, root, size=512, train=True, aug=False):
+        self.rows, self.root, self.size, self.train, self.aug = rows, root, size, train, aug
 
     def __len__(self):
         return len(self.rows)
@@ -30,14 +31,19 @@ class Crops(Dataset):
     def __getitem__(self, i):
         r = self.rows[i]
         img = Image.open(os.path.join(self.root, r["image"])).convert("RGB")
+        mimg = Image.open(os.path.join(self.root, r["mask"])).convert("L") if r["mask"] else Image.new("L", img.size, 0)
+        if self.aug:                                                          # --augment: same geometry for image + mask
+            img, mimg = augment(img, mimg, random)
         x = to_input(img)
         _, h, w = x.shape
-        m = np.zeros((h, w), np.float32)
-        if r["mask"]:
-            m = (np.asarray(Image.open(os.path.join(self.root, r["mask"])).convert("L")) > 127).astype(np.float32)
+        m = (np.asarray(mimg) > 127).astype(np.float32)
         s = self.size
-        if r["tampered"] == "1" and r["x0"] and random.random() < 0.7:        # crop around the edit most of the time
-            cx, cy = (int(float(r["x0"])) + int(float(r["x1"]))) // 2, (int(float(r["y0"])) + int(float(r["y1"]))) // 2
+        ys, xs = np.nonzero(m) if self.aug else ((), ())
+        if r["tampered"] == "1" and (r["x0"] if not self.aug else len(xs)) and random.random() < 0.7:   # crop around the edit
+            if self.aug:                                                      # edit moved with the augmentation: use the mask
+                cx, cy = int(xs.mean()), int(ys.mean())
+            else:                                                             # v1 behaviour unchanged: manifest box
+                cx, cy = (int(float(r["x0"])) + int(float(r["x1"]))) // 2, (int(float(r["y0"])) + int(float(r["y1"]))) // 2
             x0 = min(max(0, cx - random.randint(32, s - 32)), max(0, w - s)); y0 = min(max(0, cy - random.randint(32, s - 32)), max(0, h - s))
         else:
             x0, y0 = random.randint(0, max(0, w - s)), random.randint(0, max(0, h - s))
@@ -65,6 +71,7 @@ def main():
     ap.add_argument("--epochs", type=int, default=12); ap.add_argument("--bs", type=int, default=8)
     ap.add_argument("--lr", type=float, default=3e-4); ap.add_argument("--seed", type=int, default=7)
     ap.add_argument("--n_val", type=int, default=150); ap.add_argument("--n_train", type=int, default=None)
+    ap.add_argument("--augment", action="store_true", help="image-level augmentation (pramaan/model/augment.py), train split only")
     a = ap.parse_args()
     random.seed(a.seed); np.random.seed(a.seed); torch.manual_seed(a.seed)
     rows = list(csv.DictReader(open(os.path.join(a.data, "manifest.csv"))))
@@ -74,7 +81,7 @@ def main():
     model = build_model().to(dev)
     opt = torch.optim.AdamW(model.parameters(), lr=a.lr, weight_decay=1e-4)
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=a.epochs)
-    dl = DataLoader(Crops(tr, a.data), batch_size=a.bs, shuffle=True, num_workers=2, drop_last=True)
+    dl = DataLoader(Crops(tr, a.data, aug=a.augment), batch_size=a.bs, shuffle=True, num_workers=2, drop_last=True)
     pos_w = torch.tensor([10.0], device=dev)                      # edited pixels are rare
     best, log = -1.0, []
     for ep in range(a.epochs):

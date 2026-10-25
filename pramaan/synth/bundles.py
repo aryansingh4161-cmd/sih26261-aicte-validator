@@ -113,9 +113,9 @@ def build(out: str, today: date, seed: int = 11, scenarios: dict | None = None, 
         real_valid = det["valid_until"]
         if "expired_fire" in defects:
             det["issue_date"] = today - timedelta(days=365 * 3 + 40); det["valid_until"] = today - timedelta(days=40); real_valid = det["valid_until"]
-        shared.setdefault(app_id, {})["fire_no"] = det["fire_no"]
-        if "fire_no_reused_from_app03" in defects:
-            det["fire_no"] = shared[reuse_from[app_id]]["fire_no"]
+        shared.setdefault(app_id, {}).update(fire_no=det["fire_no"], fire_auth=det["fire_auth"])
+        if "fire_no_reused_from_app03" in defects:                  # a copied certificate keeps its number AND issuer
+            det["fire_no"], det["fire_auth"] = shared[reuse_from[app_id]]["fire_no"], shared[reuse_from[app_id]]["fire_auth"]
         fire_inst = inst
         if "name_mismatch" in defects:
             fire_inst = dict(inst); fire_inst["institute_name"] = inst["institute_name"].split()[0] + " Global Academy"

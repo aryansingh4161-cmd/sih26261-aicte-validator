@@ -18,6 +18,7 @@ from .schemas import BBox, DocumentRecord, Evidence, Finding
 
 EDITORS = ("photoshop", "gimp", "snapseed", "lightroom", "canva", "edited", "picsart", "pixlr", "affinity")
 THUMB_DIFF = 2.0          # mean abs diff 0..255 at 64x64; chosen on clean demo photos (n=34, max 0.25); edited APP-17 = 7.8
+THUMB_STRONG = 6.0        # WK16: 2.0-6.0 is only a weak signal (a real unedited phone photo measured 2.35, n=5 real photos)
 PRINTED = ("printed_on", "issue_date", "approval_date", "sworn_date")
 _SPECS: dict = {}
 
@@ -149,10 +150,13 @@ def _img(app_id, doc, submitted_on, photo) -> list[Finding]:
     if th:
         diff = thumb_diff(img, th)
         if diff > THUMB_DIFF:
-            out.append(_f(app_id, doc, "F-META-EXIF-THUMB", "Embedded thumbnail differs from the picture",
-                          f"The camera thumbnail stored inside the file does not match the main image (difference {diff:.1f}, "
-                          f"threshold {THUMB_DIFF:g}): a strong sign the picture was edited after it was taken.", "high",
-                          [Evidence(doc_id=doc.doc_id, page=1, text=f"thumbnail difference {diff:.1f}")], 0.85, photo))
+            strong = diff > THUMB_STRONG
+            out.append(_f(app_id, doc, "F-META-EXIF-THUMB", "Embedded thumbnail differs from the picture" + ("" if strong else " (weak signal)"),
+                          f"The camera thumbnail stored inside the file does not match the main image (difference {diff:.1f}; "
+                          + (f"above {THUMB_STRONG:g}: a strong sign the picture was edited after it was taken)." if strong else
+                             f"between {THUMB_DIFF:g} and {THUMB_STRONG:g}: weak signal, real unedited phone photos can reach this)."),
+                          "high" if strong else "low", [Evidence(doc_id=doc.doc_id, page=1, text=f"thumbnail difference {diff:.1f}")],
+                          0.85 if strong else 0.4, photo))
     taken, mod, why = _d(tags["datetime_original"]), _d(tags["datetime"]), []
     if taken and mod and (mod - taken).days > 1:
         why.append(f"modified {mod}, {(mod - taken).days} days after it was taken ({taken})")
