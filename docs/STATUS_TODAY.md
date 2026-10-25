@@ -80,3 +80,9 @@
     2) python -m tools.mock_issuer_sender --delay 3          (or --mismatch)
     3) streamlit run dashboard/app.py  -> open APP-11 (or press R to refresh): Verification + timeline show pending -> verified
 - UNTESTED / notes: single process, no auth beyond the shared DEMO secret, no replay window on timestamps, idempotency store output/issuer_webhook.db (delete it to replay the demo); only the fire department reply is simulated. Re-running the pipeline on APP-11 resets it to pending.
+
+## WK10 analytics page
+- Changed: NEW dashboard/pages/2_Analytics.py (Streamlit multipage, appears beside the officer view): lanes, findings per source, alerts by kind with overdue vs a chosen date (SLA days labelled ASSUMPTIONS), pending verifications, officer decisions vs AI lane + agreement rate ("no decisions yet" when empty), mean processing seconds, latest 50 audit rows + chain status. Reads ONLY output/*.result.json and output/audit.db (sqlite mode=ro; same hash as AuditLog.verify_chain); writes nothing, so page views here are NOT audited (by design).
+- Tests (measured): AppTest on current output: 0 exceptions, 15 apps, 19 findings, chain intact, audit.db byte-identical after render; AppTest in an empty folder: 0 exceptions, "no decisions yet", no output/ created; officer view app.py still 0 exceptions; test_contracts 13/13 PASS.
+- Numbers: the 20% agreement shown now comes from 5 TEST clicks (WK3 AppTest), not officer decisions - delete output/audit.db before a demo for a clean log.
+- UNTESTED: real browser navigation between pages; sign-in is not carried to this page (it is read-only, no role check).
