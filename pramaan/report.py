@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 from html import escape as E
 
+from .privacy import mask_text, personal_values
 from .schemas import ApplicationResult
 
 LANE = {"clear": ("#1f7a3a", "No issues found - ready for officer sign-off"),
@@ -44,7 +45,20 @@ def _finding(f):
             f'<div>{E(f.reason)}</div>{clause}{ev}</div>')
 
 
+def _masked(r: ApplicationResult) -> ApplicationResult:
+    """The HTML report does not need personal values: mask them in findings and verifications (result JSON keeps them)."""
+    pv = personal_values(r.documents)
+    if not pv:
+        return r
+    m = lambda s: mask_text(s, pv) if s else s
+    fs = [f.model_copy(update={"title": m(f.title), "reason": m(f.reason),
+                               "evidence": [e.model_copy(update={"text": m(e.text)}) for e in f.evidence]}) for f in r.findings]
+    vs = [v.model_copy(update={"reference": m(v.reference), "note": m(v.note)}) for v in r.verifications]
+    return r.model_copy(update={"findings": fs, "verifications": vs})
+
+
 def render_html(r: ApplicationResult) -> str:
+    r = _masked(r)
     col, label = LANE[r.lane]
     parts = [f'<div class="hdr"><h1>Pramaan AI - Application advisory report</h1><p>{E(r.app_id)} | {E(r.category)} | '
              f'Academic year {E(r.academic_year)} | run {E(r.run_at)}</p></div><div class="wrap">',

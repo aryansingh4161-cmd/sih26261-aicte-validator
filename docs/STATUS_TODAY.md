@@ -86,3 +86,10 @@
 - Tests (measured): AppTest on current output: 0 exceptions, 15 apps, 19 findings, chain intact, audit.db byte-identical after render; AppTest in an empty folder: 0 exceptions, "no decisions yet", no output/ created; officer view app.py still 0 exceptions; test_contracts 13/13 PASS.
 - Numbers: the 20% agreement shown now comes from 5 TEST clicks (WK3 AppTest), not officer decisions - delete output/audit.db before a demo for a clean log.
 - UNTESTED: real browser navigation between pages; sign-in is not carried to this page (it is read-only, no role check).
+
+## WK11 retention, masking, access-log export, SAFEGUARDS.md
+- Changed: NEW tools/retention.py (dry run default, --apply; *.result.json, *.report.html, heatmaps/, uploads/ older than retention_days = 30 ASSUMPTION in settings.yaml; audit.db / reuse.db / issuer_webhook.db never deleted; every run audited). NEW pramaan/privacy.py (mask "K**** V****"); pramaan/audit.py (+reference/) masks signatory_name / notary_name / stamp_no in every detail before hashing; report.py masks those values in the HTML; pipeline "document read" row now logs extracted values (personal ones masked). NEW tools/access_log_export.py (CSV by --app/--actor/--since/--until, read-only, chain status, export audited). NEW docs/SAFEGUARDS.md (REAL / DESIGNED / MOCK with file names).
+- Tests (measured): test_synth ALL PASSED; test_contracts 15/15 PASS (new t_retention, t_masking); run_eval unchanged (recall 1.0, unexpected 0, lane 14/15); dashboard + analytics AppTest 0 exceptions. Live: retention dry run 30 d -> 0 files, 0 d -> 31 files (1.4 MB) listed, none deleted; export APP-07 152 rows, officer.demo 24 rows, chain intact.
+- Note: before WK11 no personal values were in the audit log or HTML (only field names), so masking is a guard plus the new masked "values" in "document read" rows. Older rows are unchanged (hash chain).
+- OPEN: SAFEGUARDS.md headings are OUR working names (ASSUMPTION) - the PS's exact five safeguards are not in the repo; paste them in.
+- UNTESTED: retention --apply on the real output/ (only in the test dir); encryption at rest (not implemented).

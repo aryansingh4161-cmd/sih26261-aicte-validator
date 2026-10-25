@@ -87,7 +87,8 @@ def run_application(manifest_path: str, out_dir: str = "output", today: date | N
             d = classify_and_extract(d, specs_dir)
         docs.append(d)
         log.append(*SYSTEM, "document read", app.app_id, {"doc_id": d.doc_id, "sha256": d.sha256, "type": d.doc_type,
-                                                         "confidence": d.doc_type_confidence, "fields": sorted(d.fields)})
+                                                         "confidence": d.doc_type_confidence, "fields": sorted(d.fields),
+                                                         "values": {k: f.value for k, f in sorted(d.fields.items())}})   # audit masks personal ones
         if d.doc_type == "unclassified":
             findings.append(Finding(finding_id=f"{app.app_id}-R-UNCLASSIFIED-{d.doc_id}", app_id=app.app_id, doc_id=d.doc_id, source="rule",
                                     rule_id="R-UNCLASSIFIED", title="Document type not recognised",

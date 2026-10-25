@@ -8,6 +8,8 @@ import os
 import sqlite3
 from datetime import datetime
 
+from .privacy import mask_detail
+
 GENESIS = "0" * 64
 
 
@@ -31,7 +33,7 @@ class AuditLog:
     def append(self, actor: str, role: str, action: str, app_id: str | None, detail: dict) -> str:
         prev = self.head()
         ts = datetime.now().isoformat(timespec="seconds")
-        dj = json.dumps(detail, sort_keys=True, ensure_ascii=False, default=str)
+        dj = json.dumps(mask_detail(detail), sort_keys=True, ensure_ascii=False, default=str)   # personal values masked
         h = self._h(prev, ts, actor, role, action, app_id, dj)
         self.db.execute("INSERT INTO audit (ts, actor, role, action, app_id, detail, prev_hash, hash) VALUES (?,?,?,?,?,?,?,?)",
                         (ts, actor, role, action, app_id, dj, prev, h))

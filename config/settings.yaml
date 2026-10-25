@@ -10,3 +10,5 @@ priority_weights: {high: 0.25, medium: 0.1, low: 0.03, suspected_anomaly: 0.2, o
                    noc_intake_above_approved: 0.15}
 # MOCK asynchronous issuer webhook (pramaan/issuer_async.py). DEMO secret, NOT a real credential: replace via a secret store in production.
 issuer_webhook_secret: "DEMO-ONLY-pramaan-issuer-webhook-secret-not-for-production"
+# Retention (tools/retention.py): output files, heatmaps and uploaded-document copies older than this are deleted.
+retention_days: 30             # ASSUMPTION (no AICTE retention period found yet); audit.db is NEVER deleted

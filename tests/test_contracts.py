@@ -247,17 +247,66 @@ def t_issuer_webhook(m):
     bad = {**body, "status": "mismatch_detected", "timestamp": "2026-10-28T10:00:00+05:30"}
     assert c.post("/webhook/issuer", json={**bad, "signature": m.sign(bad, "test-secret")}).json()["lane"] == "human_review"
 
+
+def t_retention(m):
+    """tools/retention (WK11): dry run lists only OLD in-scope files, deletes nothing, never lists audit.db, writes one audit row."""
+    import time
+    from tools.retention import run
+    out = os.path.join(TMP, "ret"); os.makedirs(os.path.join(out, "heatmaps"), exist_ok=True)
+    old = time.time() - 40 * 86400
+    files = {"A.result.json": old, "A.report.html": old, "heatmaps/A_p1.png": old, "B.result.json": time.time(),
+             "audit.db": None, "reuse.db": old, "notes.txt": old}
+    for rel, t in files.items():
+        if rel != "audit.db":
+            open(os.path.join(out, rel), "w").write("x")
+            os.utime(os.path.join(out, rel), (t, t))
+    db = os.path.join(out, "audit.db")
+    m.AuditLog(db).append("t", "system", "seed", None, {}); os.utime(db, (old, old))
+    s = run(out, days=30, apply=False)
+    assert sorted(s["sample"]) == ["A.report.html", "A.result.json", os.path.join("heatmaps", "A_p1.png")], s["sample"]
+    assert s["deleted"] == 0 and all(os.path.exists(os.path.join(out, r)) for r in files)
+    rows = m.AuditLog(db).rows()
+    assert rows[-1]["action"] == "retention dry-run" and m.AuditLog(db).verify_chain() == (True, None)
+    s = run(out, days=30, apply=True)
+    assert s["deleted"] == 3 and os.path.exists(db) and os.path.exists(os.path.join(out, "B.result.json"))
+    assert m.AuditLog(db).rows()[-1]["action"] == "retention applied"
+
+
+def t_masking(m):
+    """privacy (WK11): personal values masked in audit details and the HTML report, full value kept in the result JSON."""
+    from pramaan.audit import AuditLog
+    from pramaan.pipeline import run_application
+    from pramaan.report import render_html
+    assert m.mask("Kavya Verma") == "K**** V****" and m.mask("IN-DL57") == "I******" and m.mask(None) is None
+    db = os.path.join(TMP, "mask.db")
+    AuditLog(db).append("t", "system", "x", None, {"values": {"signatory_name": "Kavya Verma", "institute_name": "Demo Inst"},
+                                                   "items": [{"stamp_no": "IN-DL57"}]})
+    d = AuditLog(db).rows()[-1]["detail"]
+    assert "Kavya" not in d and "K**** V****" in d and "I******" in d and "Demo Inst" in d, d
+    if not os.path.exists("data/demo/apps/APP-10.json"):
+        raise RuntimeError("run: python -m pramaan.synth.bundles  first")
+    out = os.path.join(TMP, "mask_out"); r = run_application("data/demo/apps/APP-10.json", out, TODAY, os.path.join(out, "a.db"))
+    aff = next(x for x in r.documents if x.doc_type == "affidavit_2")
+    name, stamp = aff.fields["signatory_name"].value, aff.fields["stamp_no"].value
+    assert name in open(os.path.join(out, "APP-10.result.json")).read()          # officer's JSON keeps the full value
+    details = " ".join(x["detail"] for x in AuditLog(os.path.join(out, "a.db")).rows("APP-10"))
+    assert name not in details and stamp not in details and m.mask(name) in details
+    f = r.findings[0].model_copy(update={"reason": f"Signed by {name}, stamp {stamp}."})
+    html = render_html(r.model_copy(update={"findings": [f]}))
+    assert name not in html and stamp not in html and m.mask(name) in html
+
 class _Skip(Exception):
     pass
 
 
-MODULE = {"signature": "forensics", "priority": "priority", "reuse": "reuse", "area": "rules", "issuer_webhook": "issuer_async"}   # test name -> module in pramaan/
+MODULE = {"signature": "forensics", "priority": "priority", "reuse": "reuse", "area": "rules", "issuer_webhook": "issuer_async", "retention": "audit", "masking": "privacy"}   # test name -> module in pramaan/
 
 
 TESTS = {"ingest": t_ingest, "classify_extract": t_classify_extract, "rules": t_rules, "crosscheck": t_crosscheck,
          "triage": t_triage, "audit": t_audit, "report": t_report, "pipeline": t_pipeline,
          "signature": t_signature, "priority": t_priority, "reuse": t_reuse,
-         "area": t_area, "issuer_webhook": t_issuer_webhook}
+         "area": t_area, "issuer_webhook": t_issuer_webhook,
+         "retention": t_retention, "masking": t_masking}
 
 if __name__ == "__main__":
     want = sys.argv[1:] or list(TESTS)
