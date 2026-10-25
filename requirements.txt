@@ -9,3 +9,4 @@ cryptography
 pyhanko
 streamlit
 # Colab only (training):  torch  segmentation-models-pytorch
+httpx                 # test only: Starlette TestClient for tests/test_contracts issuer_webhook

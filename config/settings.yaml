@@ -8,3 +8,5 @@ blur_threshold: 60.0           # variance of Laplacian below this = blurry (tune
 # F10 inspection priority: designed weights, ASSUMPTION, not trained. Per finding by severity; flags added once; capped at 1.0.
 priority_weights: {high: 0.25, medium: 0.1, low: 0.03, suspected_anomaly: 0.2, old_building: 0.1, old_building_years: 30,
                    noc_intake_above_approved: 0.15}
+# MOCK asynchronous issuer webhook (pramaan/issuer_async.py). DEMO secret, NOT a real credential: replace via a secret store in production.
+issuer_webhook_secret: "DEMO-ONLY-pramaan-issuer-webhook-secret-not-for-production"

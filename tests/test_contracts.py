@@ -11,7 +11,7 @@ import tempfile
 import traceback
 from datetime import date
 
-from pramaan.schemas import Application, DocumentRecord, ExtractedField, Finding, VerificationResult
+from pramaan.schemas import Application, ApplicationResult, DocumentRecord, ExtractedField, Finding, VerificationResult
 from pramaan.synth import content as C, docs as D
 
 TODAY = date(2026, 10, 26)
@@ -209,17 +209,55 @@ def t_area(m):
     assert sorted(f.rule_id for f in m.run_rules(APP, [classify_and_extract(ingest(path, "T1-a"))], [], None, rp, TODAY)) == ["R-AREA-COUNT-drawing_hall"]
     assert m.run_rules(APP, [], [], None, rp, TODAY) == []                        # no area statement: nothing (required_doc reports it)
 
+
+def t_issuer_webhook(m):
+    """issuer_async (WK9, MOCK): signed reply pending -> verified, chain intact; bad signature 401; duplicate 409, no change."""
+    try:
+        from starlette.testclient import TestClient
+    except Exception:
+        raise _Skip("starlette TestClient needs httpx: pip install httpx")
+    from pramaan.audit import AuditLog
+    from pramaan.pipeline import run_application
+    if not os.path.exists("data/demo/apps/APP-11.json"):
+        raise RuntimeError("run: python -m pramaan.synth.bundles  first")
+    out, db = os.path.join(TMP, "wh"), os.path.join(TMP, "wh", "audit.db")
+    r0 = run_application("data/demo/apps/APP-11.json", out, TODAY, db)
+    v0 = next(v for v in r0.verifications if v.method == "issuer_portal")
+    assert v0.status == "verification_pending" and any(a.kind == "pending_verification" for a in r0.alerts), v0.status
+    c = TestClient(m.create_app(out, db, "data/demo/apps", today=TODAY, secret="test-secret"))
+    doc = next(d for d in r0.documents if d.doc_id == v0.doc_id)
+    body = {"doc_id": v0.doc_id, "method": "issuer_portal", "reference": v0.reference, "status": "verified",
+            "returned": {"valid_until": doc.fields["valid_until"].value}, "timestamp": "2026-10-27T10:00:00+05:30"}
+    n0 = len(AuditLog(db).rows())
+    assert c.post("/webhook/issuer", json={**body, "signature": "00" * 32}).status_code == 401
+    assert c.post("/webhook/issuer", json={**body, "signature": m.sign(body, "wrong")}).status_code == 401
+    assert len(AuditLog(db).rows()) == n0                                     # rejected: nothing written
+    good = {**body, "signature": m.sign(body, "test-secret")}
+    resp = c.post("/webhook/issuer", json=good)
+    assert resp.status_code == 200 and resp.json()["status"] == "verified", resp.text
+    r1 = ApplicationResult.model_validate_json(open(os.path.join(out, "APP-11.result.json")).read())
+    v1 = next(v for v in r1.verifications if v.method == "issuer_portal")
+    assert v1.status == "verified" and v1.mock and v1.source.startswith("MOCK ") and v1.payload_hash
+    assert not any(a.kind == "pending_verification" for a in r1.alerts) and r1.lane == "clear"
+    log = AuditLog(db); rows = log.rows("APP-11")
+    assert log.verify_chain() == (True, None) and r1.audit_head_hash == rows[-1]["hash"]
+    assert any(x["action"] == "source response" and v1.payload_hash in x["detail"] for x in rows)
+    n1 = len(log.rows())
+    assert c.post("/webhook/issuer", json=good).status_code == 409 and len(AuditLog(db).rows()) == n1   # duplicate ignored
+    bad = {**body, "status": "mismatch_detected", "timestamp": "2026-10-28T10:00:00+05:30"}
+    assert c.post("/webhook/issuer", json={**bad, "signature": m.sign(bad, "test-secret")}).json()["lane"] == "human_review"
+
 class _Skip(Exception):
     pass
 
 
-MODULE = {"signature": "forensics", "priority": "priority", "reuse": "reuse", "area": "rules"}   # test name -> module in pramaan/
+MODULE = {"signature": "forensics", "priority": "priority", "reuse": "reuse", "area": "rules", "issuer_webhook": "issuer_async"}   # test name -> module in pramaan/
 
 
 TESTS = {"ingest": t_ingest, "classify_extract": t_classify_extract, "rules": t_rules, "crosscheck": t_crosscheck,
          "triage": t_triage, "audit": t_audit, "report": t_report, "pipeline": t_pipeline,
          "signature": t_signature, "priority": t_priority, "reuse": t_reuse,
-         "area": t_area}
+         "area": t_area, "issuer_webhook": t_issuer_webhook}
 
 if __name__ == "__main__":
     want = sys.argv[1:] or list(TESTS)

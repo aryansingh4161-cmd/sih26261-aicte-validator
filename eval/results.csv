@@ -158,3 +158,27 @@ demo.recall,Injected problems found (demo applications),1.0,fraction,19,demo_app
 demo.unexpected_findings,Findings not matching an injected problem,0,count,15,demo_apps,measured,eval/results.csv,synthetic data; see eval/run_eval.py
 demo.lane_agreement,Lane equals the designed lane,0.9333,fraction,15,demo_apps,measured,eval/results.csv,synthetic data; see eval/run_eval.py
 demo.seconds_per_app,Seconds per application (this laptop),0.34,seconds,15,demo_apps,measured,eval/results.csv,synthetic data; see eval/run_eval.py
+extract.field_acc.all,"Field extraction accuracy (synthetic, 6 types x 3 layouts)",0.9974,fraction,1920,synthetic_docs,measured,eval/results.csv,synthetic data; see eval/run_eval.py
+extract.type_acc.all,Document type accuracy (synthetic),1.0,fraction,360,synthetic_docs,measured,eval/results.csv,synthetic data; see eval/run_eval.py
+extract.field_acc.affidavit_2.A,Field accuracy affidavit_2 layout A,0.9875,fraction,160,synthetic_docs,measured,eval/results.csv,synthetic data; see eval/run_eval.py
+extract.field_acc.affidavit_2.B,Field accuracy affidavit_2 layout B,1.0,fraction,160,synthetic_docs,measured,eval/results.csv,synthetic data; see eval/run_eval.py
+extract.field_acc.affidavit_2.C,Field accuracy affidavit_2 layout C,1.0,fraction,160,synthetic_docs,measured,eval/results.csv,synthetic data; see eval/run_eval.py
+extract.field_acc.area_statement.A,Field accuracy area_statement layout A,1.0,fraction,40,synthetic_docs,measured,eval/results.csv,synthetic data; see eval/run_eval.py
+extract.field_acc.area_statement.B,Field accuracy area_statement layout B,1.0,fraction,40,synthetic_docs,measured,eval/results.csv,synthetic data; see eval/run_eval.py
+extract.field_acc.area_statement.C,Field accuracy area_statement layout C,1.0,fraction,40,synthetic_docs,measured,eval/results.csv,synthetic data; see eval/run_eval.py
+extract.field_acc.eoa_letter.A,Field accuracy eoa_letter layout A,1.0,fraction,140,synthetic_docs,measured,eval/results.csv,synthetic data; see eval/run_eval.py
+extract.field_acc.eoa_letter.B,Field accuracy eoa_letter layout B,1.0,fraction,140,synthetic_docs,measured,eval/results.csv,synthetic data; see eval/run_eval.py
+extract.field_acc.eoa_letter.C,Field accuracy eoa_letter layout C,1.0,fraction,140,synthetic_docs,measured,eval/results.csv,synthetic data; see eval/run_eval.py
+extract.field_acc.fire_cert.A,Field accuracy fire_cert layout A,1.0,fraction,100,synthetic_docs,measured,eval/results.csv,synthetic data; see eval/run_eval.py
+extract.field_acc.fire_cert.B,Field accuracy fire_cert layout B,1.0,fraction,100,synthetic_docs,measured,eval/results.csv,synthetic data; see eval/run_eval.py
+extract.field_acc.fire_cert.C,Field accuracy fire_cert layout C,1.0,fraction,100,synthetic_docs,measured,eval/results.csv,synthetic data; see eval/run_eval.py
+extract.field_acc.noc_format2.A,Field accuracy noc_format2 layout A,1.0,fraction,100,synthetic_docs,measured,eval/results.csv,synthetic data; see eval/run_eval.py
+extract.field_acc.noc_format2.B,Field accuracy noc_format2 layout B,1.0,fraction,100,synthetic_docs,measured,eval/results.csv,synthetic data; see eval/run_eval.py
+extract.field_acc.noc_format2.C,Field accuracy noc_format2 layout C,0.97,fraction,100,synthetic_docs,measured,eval/results.csv,synthetic data; see eval/run_eval.py
+extract.field_acc.structural_cert.A,Field accuracy structural_cert layout A,1.0,fraction,100,synthetic_docs,measured,eval/results.csv,synthetic data; see eval/run_eval.py
+extract.field_acc.structural_cert.B,Field accuracy structural_cert layout B,1.0,fraction,100,synthetic_docs,measured,eval/results.csv,synthetic data; see eval/run_eval.py
+extract.field_acc.structural_cert.C,Field accuracy structural_cert layout C,1.0,fraction,100,synthetic_docs,measured,eval/results.csv,synthetic data; see eval/run_eval.py
+demo.recall,Injected problems found (demo applications),1.0,fraction,19,demo_apps,measured,eval/results.csv,synthetic data; see eval/run_eval.py
+demo.unexpected_findings,Findings not matching an injected problem,0,count,15,demo_apps,measured,eval/results.csv,synthetic data; see eval/run_eval.py
+demo.lane_agreement,Lane equals the designed lane,0.9333,fraction,15,demo_apps,measured,eval/results.csv,synthetic data; see eval/run_eval.py
+demo.seconds_per_app,Seconds per application (this laptop),0.37,seconds,15,demo_apps,measured,eval/results.csv,synthetic data; see eval/run_eval.py

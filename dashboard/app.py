@@ -117,6 +117,18 @@ with left:
     st.markdown("#### Verification (MOCK = simulated source)")
     st.dataframe([{"document": v["doc_id"], "method": v["method"], "source": v["source"], "status": v["status"],
                    "mock": "MOCK" if v["mock"] else "real", "note": v["note"]} for v in r["verifications"]], hide_index=True)
+    st.markdown("#### Verification timeline (from the audit log; MOCK sources, designed for integration)")
+    tl: dict = {}
+    for x in log.rows(app):
+        if x["action"] == "source response":
+            dd = json.loads(x["detail"] or "{}")
+            steps = tl.setdefault((dd.get("doc_id"), dd.get("method")), [])
+            if not steps or (steps[-1]["status"], steps[-1]["source"]) != (dd.get("status"), dd.get("source")):
+                steps.append({"ts": x["ts"], "status": dd.get("status"), "source": dd.get("source"), "hash": dd.get("payload_hash") or ""})
+    for (doc_id, method), steps in sorted(tl.items(), key=lambda kv: (-len(kv[1]), str(kv[0]))):
+        st.markdown(f"**{doc_id}** ({method}): " + " &rarr; ".join(
+            f"`{e['status']}` at {str(e['ts'])[:19].replace('T', ' ')} <span style='color:#777'>({e['source']}, "
+            f"payload {e['hash'][:12]})</span>" for e in steps), unsafe_allow_html=True)
 with right:
     st.markdown("#### Document")
     ev = st.session_state.get("ev")
