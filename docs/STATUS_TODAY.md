@@ -20,3 +20,9 @@
 - Numbers: none new. pip works here: pyHanko 0.38.0, streamlit 1.66.1, torch 2.14.1 (MPS available), segmentation_models_pytorch 0.5.0, opencv-python-headless 5.0.0.93 installed in .venv.
 - UNTESTED: test_contracts has no cases for issuer, photo_check, tamper_model or forensics.pdf_structure_checks (they pass test_synth / pipeline only); torch train/eval/tamper_model; Streamlit serving; APP-01/APP-11 "clear" once signed (still an assumption).
 - Teammates: nothing new to pull for code; pip install -r requirements.txt now works on Mac with Python 3.14.
+
+## WK1 check 1 - torch smoke (local Mac, Python 3.14.6, torch 2.14.1 CPU)
+- Changed: no code; train_unet / eval_model / features / tamper_model / ai_inpaint --method classical all ran unmodified.
+- Measured (/tmp/tiny, 16/8/8, seed 1, 1 epoch bs 2): train 62 s on CPU, wrote /tmp/t.pt; eval wrote /tmp/r.csv incl. test_classical_inpaint (n=8). AUCs (0.0-0.87) are noise on n=8 after 1 epoch - smoke only, NOT results.
+- tamper_check: loads weights, runs on a scanned image (threshold 0 -> 1 F-TAMPER finding, lane human_review, heatmap saved); [] for text-layer PDFs and for missing weights, as designed.
+- Note: train_unet downloads ImageNet encoder weights from the HF Hub on first run (needs internet on Colab). --method ai not tried (not asked).
