@@ -133,7 +133,10 @@ def t_seal():
 
 def _page(path, **state):
     """Run a dashboard page headless (streamlit AppTest) on this test's output folder; returns the AppTest."""
+    import re
     from streamlit.testing.v1 import AppTest
+    src = open(path, encoding="utf-8").read()            # Streamlit "magic" renders bare expressions; AppTest does not show it
+    assert not re.search(r"\) if .+ else st\.", src), f"{path}: use if/else, not a conditional expression statement"
     os.environ["PRAMAAN_OUT"] = TMP
     at = AppTest.from_file(os.path.abspath(path), default_timeout=120)
     for k, v in state.items():
@@ -273,7 +276,16 @@ def t_export_case():
         assert all(r["app_id"] == "APP-06" for r in json.loads(z.read("audit_slice.json")))
 
 
-TESTS = {"lod": t_lod, "resubmit": t_resubmit, "checklist": t_checklist, "queue": t_queue, "trust": t_trust, "seal": t_seal, "desk_page": t_desk_page, "yoy": t_yoy, "serial": t_serial, "verify_board": t_verify_board, "expiry": t_expiry, "feedback": t_feedback, "assign": t_assign, "export_case": t_export_case}
+def t_checks_pages():
+    results(*[f"APP-{k:02d}" for k in range(1, 24)])
+    os.environ["PRAMAAN_OUTBOX"] = os.path.join(TMP, "outbox")
+    at = _page("dashboard/pages/3_Checks.py")
+    assert at.title[0].value == "Checks" and any("APP-22" in str(d.value) for d in at.dataframe), "serial table shows APP-22"
+    at = _page("dashboard/pages/4_Calendar_Exports.py")
+    assert at.title[0].value == "Calendar & Exports" and any("Overdue" in m.value for m in at.markdown), [m.value for m in at.markdown][:5]
+
+
+TESTS = {"lod": t_lod, "resubmit": t_resubmit, "checklist": t_checklist, "queue": t_queue, "trust": t_trust, "seal": t_seal, "desk_page": t_desk_page, "yoy": t_yoy, "serial": t_serial, "verify_board": t_verify_board, "expiry": t_expiry, "feedback": t_feedback, "assign": t_assign, "export_case": t_export_case, "checks_pages": t_checks_pages}
 
 if __name__ == "__main__":
     want = sys.argv[1:] or list(TESTS)
