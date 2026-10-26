@@ -227,6 +227,10 @@ def t_issuer_webhook(m):
     from pramaan.pipeline import run_application
     if not os.path.exists("data/demo/apps/APP-11.json"):
         raise RuntimeError("run: python -m pramaan.synth.bundles  first")
+    try:
+        import pyhanko  # noqa: F401  (APP-11 can only reach lane "clear" when its affidavit is really signed)
+    except ImportError:
+        raise _Skip("pyHanko not installed, demo affidavits are unsigned: pip install pyhanko, then rebuild bundles")
     out, db = os.path.join(TMP, "wh"), os.path.join(TMP, "wh", "audit.db")
     r0 = run_application("data/demo/apps/APP-11.json", out, TODAY, db)
     v0 = next(v for v in r0.verifications if v.method == "issuer_portal")
