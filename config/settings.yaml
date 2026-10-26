@@ -25,3 +25,5 @@ yoy: {intake_up_pct: 25, area_up_min_pct: 5, name_similarity: 0.85, address_simi
 # WK23-8 serial reuse across institutes (DESIGNED rule, ASSUMPTION values, fixed before looking at the demo results):
 # masked body text >= text_min AND same issuer AND issue dates <= days apart AND certificate numbers <= number_gap apart
 serial: {text_min: 0.95, days: 30, number_gap: 20, doc_types: [structural_cert, fire_cert, occupancy_cert]}
+# WK23-10 expiry reminders: days before expiry (ASSUMPTION). Reminders go to the MOCK outbox data/outbox/ (no real email/SMS).
+reminder_days: [60, 30, 7]

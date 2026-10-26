@@ -194,7 +194,26 @@ def t_verify_board():
     assert all(set(x) >= {"document", "source", "status", "checked_at", "compared"} for x in b1 + b3)
 
 
-TESTS = {"lod": t_lod, "resubmit": t_resubmit, "checklist": t_checklist, "queue": t_queue, "trust": t_trust, "seal": t_seal, "desk_page": t_desk_page, "yoy": t_yoy, "serial": t_serial, "verify_board": t_verify_board}
+def t_expiry():
+    from pramaan.expiry import days_left, expiries, overdue, reminders, to_ics
+    rs = results(*[f"APP-{k:02d}" for k in range(1, 24)])
+    rows = expiries(rs)
+    kinds = {r["doc_type"] for r in rows}
+    assert {"fire_cert", "structural_cert"} <= kinds and all(r["how"] for r in rows), kinds
+    od = overdue(rows, TODAY)
+    assert {r["app_id"] for r in od} >= {"APP-03"} and all(days_left(r, TODAY) < 0 for r in od), od      # APP-03 fire expired
+    box = os.path.join(TMP, "outbox")
+    soon = [r for r in rows if 0 <= days_left(r, TODAY) <= 60]
+    sent = reminders(rows, TODAY, outbox=box)
+    assert len(sent) == len(soon) and reminders(rows, TODAY, outbox=box) == sent              # once per threshold
+    fake = [{"app_id": "APP-X", "doc_id": "APP-X-fire_cert", "doc_type": "fire_cert", "expires": "2026-11-02", "how": "test"}]
+    p = reminders(fake, TODAY, outbox=box)[0]
+    assert p.endswith("reminder-APP-X-fire_cert-7d.json") and '"channel": "email (MOCK)"' in open(p).read()
+    ics = to_ics(rows)
+    assert ics.startswith("BEGIN:VCALENDAR") and ics.count("BEGIN:VEVENT") == len(rows) and "DTSTART;VALUE=DATE:" in ics
+
+
+TESTS = {"lod": t_lod, "resubmit": t_resubmit, "checklist": t_checklist, "queue": t_queue, "trust": t_trust, "seal": t_seal, "desk_page": t_desk_page, "yoy": t_yoy, "serial": t_serial, "verify_board": t_verify_board, "expiry": t_expiry}
 
 if __name__ == "__main__":
     want = sys.argv[1:] or list(TESTS)
