@@ -169,7 +169,16 @@ def t_yoy():
     assert [x.rule_id for x in yoy_check(app, [], rec, {})] == ["X-YOY-NAME"]
 
 
-TESTS = {"lod": t_lod, "resubmit": t_resubmit, "checklist": t_checklist, "queue": t_queue, "trust": t_trust, "seal": t_seal, "desk_page": t_desk_page, "yoy": t_yoy}
+def t_serial():
+    rs = results(*[f"APP-{k:02d}" for k in range(1, 24)])
+    hits = {r.app_id: [f for f in r.findings if f.rule_id == "X-SERIAL"] for r in rs}
+    assert len(hits["APP-22"]) == 1 and "APP-21" in hits["APP-22"][0].reason and hits["APP-22"][0].lane == "human_review", hits["APP-22"]
+    assert "% identical to the one submitted by APP-21" in hits["APP-22"][0].reason, hits["APP-22"][0].reason
+    false = {a: len(v) for a, v in hits.items() if v and a != "APP-22"}
+    assert not false, false                                      # 0 false matches on the other 22 apps (APP-01..18 included)
+
+
+TESTS = {"lod": t_lod, "resubmit": t_resubmit, "checklist": t_checklist, "queue": t_queue, "trust": t_trust, "seal": t_seal, "desk_page": t_desk_page, "yoy": t_yoy, "serial": t_serial}
 
 if __name__ == "__main__":
     want = sys.argv[1:] or list(TESTS)

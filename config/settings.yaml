@@ -22,3 +22,6 @@ trust_weights: {high: 40, medium: 20, low: 8, info: 0, mismatch_detected: 30, ex
                 source_unavailable: 5, manual_review_required: 10}
 # WK23-7 year-over-year compare (ASSUMPTION thresholds): intake up >= intake_up_pct while built-up area up < area_up_min_pct
 yoy: {intake_up_pct: 25, area_up_min_pct: 5, name_similarity: 0.85, address_similarity: 0.7}
+# WK23-8 serial reuse across institutes (DESIGNED rule, ASSUMPTION values, fixed before looking at the demo results):
+# masked body text >= text_min AND same issuer AND issue dates <= days apart AND certificate numbers <= number_gap apart
+serial: {text_min: 0.95, days: 30, number_gap: 20, doc_types: [structural_cert, fire_cert, occupancy_cert]}
