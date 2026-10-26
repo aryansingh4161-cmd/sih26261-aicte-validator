@@ -270,3 +270,7 @@ output/i18n_cache.db
 
 # WK25: local copy of the public AICTE Approval Process Handbook (rule_admin.check_clause); not committed
 data/handbook/
+
+# WK26 web app
+web/node_modules/
+web/dist/

@@ -1,0 +1,26 @@
+import { HashRouter, Navigate, Route, Routes } from "react-router-dom";
+import { Shell } from "./components/Shell";
+import { useSettings } from "./app/settings";
+import { Placeholder } from "./pages/Placeholder";
+
+// Hash routes so the static demo works on GitHub Pages without server rewrites.
+export function App() {
+  const { signedIn } = useSettings();
+  return (
+    <HashRouter>
+      <Routes>
+        <Route path="/sign-in" element={<Placeholder name="Sign in" />} />
+        <Route path="*" element={signedIn || import.meta.env.DEV ? <Shell><Routes>
+          <Route path="/" element={<Placeholder name="My queue" />} />
+          <Route path="/case/:id/*" element={<Placeholder name="Case" />} />
+          <Route path="/calendar" element={<Placeholder name="Calendar" />} />
+          <Route path="/letters" element={<Placeholder name="Letters" />} />
+          <Route path="/appeals" element={<Placeholder name="Appeals" />} />
+          <Route path="/analytics" element={<Placeholder name="Analytics" />} />
+          <Route path="/search" element={<Placeholder name="Search" />} />
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes></Shell> : <Navigate to="/sign-in" />} />
+      </Routes>
+    </HashRouter>
+  );
+}
