@@ -34,7 +34,30 @@ def t_case_timeline():
     assert cli.returncode == 0 and "letter issued" in cli.stdout, cli.stderr[-300:]
 
 
-TESTS = {"case_timeline": t_case_timeline}
+def t_search():
+    import json
+    from pramaan.search import delete_filter, list_filters, run_filter, save_filter, search
+    results(*[f"APP-{k:02d}" for k in range(1, 24)])
+    reg = json.load(open("data/demo/apps/APP-03.json"))["declared"]["region"]
+    hits = search("fire", {"region": reg}, TMP)
+    assert "APP-03" in [h["app_id"] for h in hits] and all(
+        json.load(open(f"data/demo/apps/{h['app_id']}.json"))["declared"]["region"] == reg for h in hits), hits
+    top = search("fire expired", {"region": reg}, TMP)
+    assert top and top[0]["app_id"] == "APP-03", top[:3]
+    name = json.load(open("data/demo/apps/APP-07.json"))["declared"]["institute_name"]
+    word = max(name.split(), key=len); typo = word[:2] + word[3:]                  # one letter dropped
+    assert any(h["app_id"] == "APP-07" for h in search(typo, None, TMP)), (typo, name)
+    assert search("zzzz-nothing", None, TMP) == []                                  # review focus 2
+    assert len(search("", {"region": reg}, TMP)) >= 1                               # filters only
+    assert [h["app_id"] for h in search("serial", None, TMP)] == ["APP-22"]
+    db = os.path.join(TMP, "audit.db")
+    save_filter(db, "officer.nw", "fire expired here", "fire expired", {"region": reg})
+    assert [f["name"] for f in list_filters(db, "officer.nw")] == ["fire expired here"]
+    assert run_filter(db, "officer.nw", "fire expired here", out_dir=TMP)[0]["app_id"] == "APP-03"
+    assert delete_filter(db, "officer.nw", "fire expired here") and list_filters(db, "officer.nw") == []
+
+
+TESTS = {"case_timeline": t_case_timeline, "search": t_search}
 
 if __name__ == "__main__":
     want = sys.argv[1:] or list(TESTS)

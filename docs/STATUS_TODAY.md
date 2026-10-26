@@ -254,3 +254,4 @@
 - "Any layer" = model only on these pages: font-mix and PDF-revision checks read PDFs, these test pages are images (designed limitation). False alarms at the val threshold on unseen layouts are high for every model (model 1 flags 120/168 clean ood_layout pages).
 - Note: eval/results_model_kaggle.csv says its U-Net threshold on val was 0.000 (model 2 behaviour) and lists ood_layout AUC 0.7585 vs 0.625 here; the Kaggle numbers likely come from other weights/data, so do not mix the two tables on the deck.
 - WK25-21: case_timeline.py (build_timeline, case_summary, CLI) + assign.record_assignment (audit row "case assigned"). Test PASS; contracts 22/22, officer 22/22.
+- WK25-22: search.py (ranked AND search, fuzzy names, saved_filters table, CLI). Test PASS.
