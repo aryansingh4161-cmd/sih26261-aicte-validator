@@ -16,6 +16,10 @@ SHOTS = [
     ("02_shell_hindi", "/", {"lang": "hi"}, []),
     ("02_shell_urdu", "/", {"lang": "ur"}, []),
     ("02_shell_profile", "/", {}, [("click_sel", "button.avatar")]),
+    ("02_home", "/", {}, []),
+    ("16_batch_approve", "/", {}, [("click", "Approve clear files"), ("wait", 800), ("click_sel", ".spotbox .btn.small"), ("wait", 1500),
+                                   ("click", "I opened it and agree")]),
+    ("18_states", "/states", {}, []),
 ]
 
 

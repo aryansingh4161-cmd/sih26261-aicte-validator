@@ -36,7 +36,8 @@ import chevron_right from "@material-symbols/svg-400/outlined/chevron_right-fill
 import person from "@material-symbols/svg-400/outlined/person-fill.svg?raw";
 import arrow_back from "@material-symbols/svg-400/outlined/arrow_back-fill.svg?raw";
 import gavel from "@material-symbols/svg-400/outlined/gavel-fill.svg?raw";
-const SVG: Record<string, string> = { inbox, calendar_month, description, history, bar_chart, search, dark_mode, light_mode, translate, keyboard_arrow_down, undo, visibility, check_circle, do_not_disturb_on, download, arrow_forward, verified_user, refresh, open_in_new, close, chat, bookmark, location_on, photo_camera, print, logout, task_alt, error, cloud_off, keyboard, check_box, check_box_outline_blank, chevron_right, person, arrow_back, gavel };
+import warning from "@material-symbols/svg-400/outlined/warning-fill.svg?raw";
+const SVG: Record<string, string> = { inbox, calendar_month, description, history, bar_chart, search, dark_mode, light_mode, translate, keyboard_arrow_down, undo, visibility, check_circle, do_not_disturb_on, download, arrow_forward, verified_user, refresh, open_in_new, close, chat, bookmark, location_on, photo_camera, print, logout, task_alt, error, cloud_off, keyboard, check_box, check_box_outline_blank, chevron_right, person, arrow_back, gavel, warning };
 export type IconName = keyof typeof SVG;
 export function Icon({ name, size, className, style, label }: { name: string; size?: number; className?: string; style?: CSSProperties; label?: string }) {
   const svg = (SVG[name] || "").replace("<svg ", `<svg aria-hidden="true" focusable="false" ${size ? `style="width:${size}px;height:${size}px"` : ""} `);

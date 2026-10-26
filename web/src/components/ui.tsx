@@ -89,3 +89,50 @@ export function LoadingMark({ label }: { label?: string }) {
   const t = useT();
   return <div className="state"><GearMark size={44} spin /><p style={{ margin: 0 }}>{label || t("Loading")}</p></div>;
 }
+
+// ---- 18 States: when there is nothing, something fails, or it is loading ----
+export function EmptyQueue({ text }: { text?: string }) {
+  const t = useT();
+  return <div className="state"><GearMark size={60} /><h2 style={{ color: "var(--text)" }}>{t("Nothing waiting.")}</h2>
+    <p style={{ margin: 0 }}>{text || t("New files arrive when institutes submit. Clear files can be approved in a batch.")}</p></div>;
+}
+
+export function UnreadableState({ what, onLod, onHand }: { what: string; onLod?: () => void; onHand?: () => void }) {
+  const t = useT();
+  return (
+    <div className="state left" role="status">
+      <h3 className="state-title"><Icon name="warning" style={{ color: "var(--rev)" }} />{t("This scan is too blurry to read.")}</h3>
+      <p style={{ margin: 0 }}>{t("Pramaan could not read")} {what}. {t("It is marked \"Not automated\" so it is never passed silently.")}</p>
+      <LaneChip lane="not_automated" />
+      <div style={{ display: "flex", gap: 10 }}>
+        <button className="btn primary" onClick={onLod}>{t("Add to Letter of Deficiency")}</button>
+        <button className="btn" onClick={onHand}>{t("I checked it by hand")}</button>
+      </div>
+    </div>
+  );
+}
+
+export function SourceDown({ source, onRetry }: { source: string; onRetry?: () => void }) {
+  const t = useT();
+  return (
+    <div className="state left" role="status">
+      <h3 className="state-title"><Icon name="cloud_off" />{source} {t("did not answer.")}</h3>
+      <p style={{ margin: 0 }}>{t("You can keep working. This check shows as \"Not automated\" until it gets an answer.")}</p>
+      <div><button className="btn" onClick={onRetry}>{t("Ask again now")}</button></div>
+    </div>
+  );
+}
+
+export function LoadingTable({ what }: { what: string }) {
+  const t = useT();
+  return (
+    <div style={{ padding: "24px 28px" }} aria-busy="true">
+      <div style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--muted)", marginBottom: 22 }}><GearMark size={26} spin />{t("Loading")} {what}...</div>
+      {Array.from({ length: 6 }, (_, i) => (
+        <div key={i} style={{ display: "grid", gridTemplateColumns: "18px 200px 110px 180px", gap: 20, marginBottom: 32 }}>
+          <div className="skel" style={{ height: 10 }} /><div className="skel" style={{ height: 12 }} /><div className="skel" style={{ height: 16 }} /><div className="skel" style={{ height: 12 }} />
+        </div>
+      ))}
+    </div>
+  );
+}

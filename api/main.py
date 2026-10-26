@@ -40,6 +40,11 @@ def health():
     return {"ok": True, "cases": len(c.results()), "today": c.today.isoformat(), "mode": "live"}
 
 
+@app.get("/api/officers")
+def officers():
+    return [{"id": u["id"], "name": u["name"], "regions": u.get("regions", [])} for u in Ctx().users() if u.get("role") == "scrutiny_officer"]
+
+
 @app.get("/api/roles")
 def roles(lang: str = "en"):
     c = ctx(lang)

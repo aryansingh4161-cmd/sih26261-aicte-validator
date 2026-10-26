@@ -69,6 +69,7 @@ def main() -> None:
             write(a.out, lang, name, fn(c))
         write(a.out, lang, "search/_all", G.search(c, ""))
         write(a.out, lang, "roles", [{"id": k, "name": c.tr(v["name"])} for k, v in ROLES.items()])
+        write(a.out, lang, "officers", [{"id": u["id"], "name": u["name"], "regions": u.get("regions", [])} for u in c.users() if u.get("role") == "scrutiny_officer"])
         print(f"{lang}: views written", flush=True)
     for name in ("privacy", "terms", "accessibility"):
         write(a.out, "en", f"docs/{name}", G.policy(c0, name))
