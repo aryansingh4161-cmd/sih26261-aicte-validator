@@ -74,7 +74,12 @@ def build_lod(result: ApplicationResult, institute: str = "[Institute name]", pe
     return {"app_id": result.app_id, "deficiencies": defs, "notes": notes, "text": text, "html": to_html(text, notes, lang)}
 
 
-def to_html(text: str, notes: list, lang: str = "en") -> str:
+def to_html(text: str, notes: list, lang: str = "en", annex_section: bool = True) -> str:
+    """annex_section=False (WK26): the copy that goes to the institute has no internal-notes section at all."""
+    if not annex_section:
+        return (f"<!doctype html><meta charset='utf-8'><title>{H.escape(t('Letter of Deficiency', lang))}</title>"
+                f"<body style='font-family:serif;max-width:46em;margin:2em auto'><pre style='white-space:pre-wrap;font-family:serif'>"
+                f"{H.escape(text)}</pre></body>")
     annex = "".join(f"<li><b>{H.escape(n['what'])}</b> ({H.escape(n['rule_id'])}): {H.escape(n['reason'])}</li>" for n in notes)
     return (f"<!doctype html><meta charset='utf-8'><title>{H.escape(t('Letter of Deficiency (draft)', lang))}</title>"
             f"<body style='font-family:serif;max-width:46em;margin:2em auto'><pre style='white-space:pre-wrap;font-family:serif'>"

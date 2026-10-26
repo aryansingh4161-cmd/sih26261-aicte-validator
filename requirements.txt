@@ -13,3 +13,5 @@ httpx                 # test only: Starlette TestClient for tests/test_contracts
 python-docx          # WK23 Letter of Deficiency .docx export (optional: HTML + text work without it)
 qrcode               # WK23 report seal QR code
 rapidfuzz            # WK23 serial-reuse text fingerprints (falls back to difflib)
+fastapi              # WK26 web API (api/)
+uvicorn[standard]    # WK26 web API server

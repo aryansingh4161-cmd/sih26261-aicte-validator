@@ -260,3 +260,4 @@
 - WK25-25: docs/PRIVACY.md, TERMS.md, ACCESSIBILITY.md; README.md restored (from README_V1.md + header + links). Test PASS.
 - WK25-26: eval/extraction_real.py normalises whitespace on both sides (+ dates joined across line breaks). Dev re-run and held-out test WAITING for the answer key (6 held-out PDFs present: EOA7, 8, 10, 11, 12, 13; not opened). Test PASS.
 - WK25 close (measured): run_eval field 0.9977 (n=2220), type 1.0 (n=420), recall 1.0 (n=35), 0 unexpected, lanes 23/23, 0.67 s/app. Tests: contracts 22/22, officer 22/22, product 6/6, synth / rules_extra / crosscheck_extra / occupancy ALL PASSED. No file in dashboard/ or reference/dashboard/ changed in WK25.
+- WK26-M1: api/ (ctx, views_case, views_case2, views_global, actions, images, main), tools/export_snapshot.py, tests/test_api.py 3/3; letters.to_html(annex_section=False) for the institute copy; outbox template loa_draft. Python suites all pass.

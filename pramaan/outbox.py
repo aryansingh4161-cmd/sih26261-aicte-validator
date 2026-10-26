@@ -18,6 +18,9 @@ TEMPLATES = {
     "lod_issued": ("Letter of Deficiency: {app_id}",
                    "A Letter of Deficiency was issued for application {app_id} on {issued_on}. You may respond within 7 days (APH 1.11 a.)."),
     "decision": ("Decision recorded: {app_id}", "A decision was recorded for application {app_id}: {decision}."),
+    "loa_draft": ("Letter of Approval (draft): {app_id}",
+                  "A Letter of Approval for application {app_id} was drafted after a batch approval with a random spot check. "
+                  "It is sent once the competent officer signs it."),
 }
 
 
