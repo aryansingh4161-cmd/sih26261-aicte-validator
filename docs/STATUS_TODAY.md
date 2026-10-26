@@ -224,3 +224,10 @@
 - Real scans (n=2, real, not tuned on): land document unclassified, 0 fields before and after (no spec for that type); structural: 2 fields before and after. No change.
 - Part B: tamper_model mode single|ensemble + tools/ensemble_eval.py (val-only 95th-percentile threshold, AUC+CI, pixel F1, caught/false alarms, decision rule); settings tamper_mode: single. BLOCKED: model2_tamper_unet.pt not on this Mac; test_ai_inpaint needs a GPU (diffusers not installed). CPU estimate ~4 h for all local sets with 2 models.
 - Part C step 1: eoa_letter institute_name read from the grid cell right of "Name of the Institution" (spec option cell_labels, no names in spec); 6/6 dev letters now read the full wrapped name; scorer treats & = AND. Dev score + held-out test WAITING: codes.csv / eoa_truth.csv and real_samples/eoa_test/ are not on this Mac.
+
+## WK23 Part 1 - the daily desk (done)
+- Built: letters.py (LoD), resubmit.py, checklists/eoa_existing.yaml + checklist.py, queue.py, trust.py, seal.py + tools/verify_report.py, dashboard/pages/1_Desk.py (+ dashboard/ui.py), i18n.py hook (English passthrough), demo APP-19..23 (APP-01..18 documents byte-identical), reuse skips the same Permanent Id (resubmission).
+- Tests (measured): test_contracts 22/22 PASS; test_officer 7/7 PASS (lod, resubmit, checklist, queue, trust, seal, desk_page). Report seal: one byte changed -> ALTERED.
+- Numbers: APP-01 checklist 11 green / 3 grey; APP-02 fire row red; APP-02 -> APP-19 "1 of 1 deficiencies resolved; 0 still open; 1 new" (APP-02 had only one deficiency); trust (designed): APP-01 100, APP-16 36.
+- Screenshots: out/deck/wk23_1.png (LoD), wk23_2.png (resubmission), wk23_3.png (checklist), wk23_6.png (seal) via tools/deck_screens.py.
+- run_eval now: recall 0.9143 (n=35), 0 unexpected, lanes 21/23 -- the 3 misses are X-YOY / X-SERIAL / X-GEO, built in Part 2/3.

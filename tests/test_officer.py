@@ -131,7 +131,30 @@ def t_seal():
     assert cli.returncode == 1 and cli.stdout.startswith("ALTERED"), cli.stdout
 
 
-TESTS = {"lod": t_lod, "resubmit": t_resubmit, "checklist": t_checklist, "queue": t_queue, "trust": t_trust, "seal": t_seal}
+def _page(path, **state):
+    """Run a dashboard page headless (streamlit AppTest) on this test's output folder; returns the AppTest."""
+    from streamlit.testing.v1 import AppTest
+    os.environ["PRAMAAN_OUT"] = TMP
+    at = AppTest.from_file(os.path.abspath(path), default_timeout=120)
+    for k, v in state.items():
+        at.session_state[k] = v
+    at.run()
+    assert not at.exception, [e.value for e in at.exception]
+    return at
+
+
+def t_desk_page():
+    results(*[f"APP-{k:02d}" for k in range(1, 24)])
+    at = _page("dashboard/pages/1_Desk.py")
+    assert at.title[0].value == "Desk" and len(at.dataframe[0].value) == 23
+    assert any("Letter of Deficiency" in s.value for s in at.subheader)
+    sel = next(s for s in at.selectbox if s.label == "Open application")
+    sel.set_value("APP-19").run()
+    assert not at.exception and any("Resubmission of APP-02" in s.value for s in at.subheader)
+    assert any("1 of 1 deficiencies resolved" in i.value for i in at.info)
+
+
+TESTS = {"lod": t_lod, "resubmit": t_resubmit, "checklist": t_checklist, "queue": t_queue, "trust": t_trust, "seal": t_seal, "desk_page": t_desk_page}
 
 if __name__ == "__main__":
     want = sys.argv[1:] or list(TESTS)
