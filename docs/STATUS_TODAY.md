@@ -234,7 +234,7 @@
 
 ## WK23 Part 2 - checks across applications and time (done)
 - Built: yoy.py (X-YOY-*, pipeline), serial.py (X-SERIAL, pipeline, index in reuse.db), verify_board.py + MOCK municipal register / NBA / DigiLocker (+ docs/ADAPTERS.md), expiry.py + outbox.py (MOCK), feedback.py (table in audit.db), assign.py, export_case.py; pages 3_Checks.py, 4_Calendar_Exports.py.
-- Tests (measured): test_contracts 22/22 PASS; test_officer 16/16 PASS. Screenshots caught a Streamlit "magic" bug (conditional-expression statements rendered st's help table / a SyntaxError box) that AppTest does not show: fixed + a guard in the page tests.
+- Tests (measured): test_contracts 22/22 PASS; test_officer 15/15 PASS. Screenshots caught a Streamlit "magic" bug (conditional-expression statements rendered st's help table / a SyntaxError box) that AppTest does not show: fixed + a guard in the page tests.
 - Numbers (measured, synthetic): APP-20 X-YOY-INTAKE (+50% intake, +0% area); APP-22 X-SERIAL vs APP-21 (similarity 0.998), 0 false matches on the other 22 apps; 44 expiries, 2 overdue; assignment se 10 / nw 5 / central 5 / west 2 / west2 1.
 - run_eval (demo): recall 0.9714 (n=35; only X-GEO missing, built in Part 3), 0 unexpected, lanes 23/23.
 - Screenshots: out/deck/wk23_8, 9, 10, 11, 12, 13.png.
