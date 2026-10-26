@@ -1,6 +1,7 @@
 """WK23 Desk: the officer's daily page. Applications by priority with trust score and checklist; per application the
 checklist (with evidence), trust reasons, the Letter of Deficiency editor + sealed export, the resubmission diff; and the
 one-click clear queue with its mandatory spot check. Advisory only: the officer decides; decisions go to the audit log."""
+import json
 import os
 import sys
 from datetime import date
@@ -11,6 +12,7 @@ sys.path.insert(0, os.getcwd())
 from dashboard.ui import DB, OUT, manifests, results, rtl, sidebar, t  # noqa: E402
 from pramaan.audit import AuditLog  # noqa: E402
 from pramaan.checklist import counts, tick  # noqa: E402
+from pramaan.evc_pack import evc_pack  # noqa: E402
 from pramaan.letters import build_lod, export_docx, save_final, to_html  # noqa: E402
 from pramaan.queue import SpotCheckIncomplete, approve_batch, batch_seed, clear_queue, spot_sample  # noqa: E402
 from pramaan.resubmit import compare  # noqa: E402
@@ -81,6 +83,15 @@ with tab_app:
     path = os.path.join(OUT, f"{app_id}_LoD.docx")
     if export_docx(text, path):
         b4.download_button(t("Download .docx"), open(path, "rb").read(), os.path.basename(path))
+
+    st.subheader(t("Expert Visit Committee pack"))
+    if st.button(t("Build EVC visit pack (sealed)")):
+        recs = json.load(open("data/aicte_records.json")) if os.path.exists("data/aicte_records.json") else {}
+        with AuditLog(DB) as log:
+            st.session_state[f"evc-{app_id}"] = evc_pack(r, recs.get(m.get("permanent_id")), log, lang=st.session_state.get("lang", "en"))
+    if st.session_state.get(f"evc-{app_id}"):
+        st.download_button(t("Download EVC pack"), st.session_state[f"evc-{app_id}"], f"{app_id}_EVC_pack.html", "text/html")
+        st.html(st.session_state[f"evc-{app_id}"])
 
 with tab_queue:
     q = clear_queue(res)

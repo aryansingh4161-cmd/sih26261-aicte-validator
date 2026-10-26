@@ -321,7 +321,26 @@ def t_selfcheck_page():
     assert not at.exception and any("Fire Safety Certificate missing" in m.value for m in at.markdown), [m.value for m in at.markdown]
 
 
-TESTS = {"lod": t_lod, "resubmit": t_resubmit, "checklist": t_checklist, "queue": t_queue, "trust": t_trust, "seal": t_seal, "desk_page": t_desk_page, "yoy": t_yoy, "serial": t_serial, "verify_board": t_verify_board, "expiry": t_expiry, "feedback": t_feedback, "assign": t_assign, "export_case": t_export_case, "checks_pages": t_checks_pages, "geo": t_geo, "selfcheck": t_selfcheck, "selfcheck_page": t_selfcheck_page}
+def t_evc_pack():
+    import json
+    from pramaan.audit import AuditLog
+    from pramaan.evc_pack import evc_pack, items
+    from pramaan.seal import verify_sealed
+    rs = {r.app_id: r for r in results(*[f"APP-{k:02d}" for k in range(1, 24)])}
+    rec = json.load(open("data/aicte_records.json"))
+    pid = lambda a: json.load(open(f"data/demo/apps/{a}.json"))["permanent_id"]
+    i15 = items(rs["APP-15"], rec[pid("APP-15")], TODAY)
+    assert any(x["what"].startswith("Measure the rooms") and "norm" in x["why"] for x in i15), i15
+    i05 = items(rs["APP-05"], rec[pid("APP-05")], TODAY)
+    assert any("over 30 years" in x["what"] and "ANNEXURE-2 2.1 iv." in x["clause"] for x in i05), i05
+    assert any("sworn after submission" in x["what"] for x in items(rs["APP-10"], rec[pid("APP-10")], TODAY))
+    assert any("photos" in x["what"] for x in items(rs["APP-09"], rec[pid("APP-09")], TODAY))
+    with AuditLog(DB) as log:
+        page = evc_pack(rs["APP-15"], rec[pid("APP-15")], log, TODAY)
+    assert verify_sealed(page, DB).startswith("VALID") and "Expert Visit Committee" in page
+
+
+TESTS = {"lod": t_lod, "resubmit": t_resubmit, "checklist": t_checklist, "queue": t_queue, "trust": t_trust, "seal": t_seal, "desk_page": t_desk_page, "yoy": t_yoy, "serial": t_serial, "verify_board": t_verify_board, "expiry": t_expiry, "feedback": t_feedback, "assign": t_assign, "export_case": t_export_case, "checks_pages": t_checks_pages, "geo": t_geo, "selfcheck": t_selfcheck, "selfcheck_page": t_selfcheck_page, "evc_pack": t_evc_pack}
 
 if __name__ == "__main__":
     want = sys.argv[1:] or list(TESTS)
