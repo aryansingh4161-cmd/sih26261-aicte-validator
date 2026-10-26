@@ -20,7 +20,8 @@ from .util import similarity
 
 CERT_FIELDS = ("certificate_no", "ref_no", "stamp_no")
 CERT_MIN_LEN = 6                   # WK16: shorter numbers (e.g. 3-digit municipal certificate numbers) collide by chance
-ISSUER_FIELD = {"fire_cert": "issuing_authority", "structural_cert": "issuing_authority", "noc_format2": "university_name"}
+ISSUER_FIELD = {"fire_cert": "issuing_authority", "structural_cert": "issuing_authority", "occupancy_cert": "issuing_authority",
+                "noc_format2": "university_name"}
 ISSUER_SIM = 0.85                  # same issuer / university required (doc types without an issuer field: number only)
 # Chosen on the demo photos (WK15, n=35 photos, 593 unrelated pairs): re-saved / resized / brightness / contrast copies
 # <= 0.025 and <= 16 bits; closest unrelated pair 0.205 (11 bits). A 3% crop (0.154) is NOT caught (margin too thin).

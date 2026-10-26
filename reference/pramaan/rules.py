@@ -9,7 +9,7 @@ import yaml
 from .schemas import Application, DocumentRecord, Evidence, Finding, VerificationResult
 from .util import add_years, parse_date
 
-NEEDS_DOC = {"field_present", "not_expired", "age_validity", "value_equals", "signature_required", "year_match"}
+NEEDS_DOC = {"field_present", "not_expired", "age_validity", "provisional_age", "value_equals", "signature_required", "year_match"}
 
 
 def _doc(docs, dt):
@@ -67,6 +67,16 @@ def _check(rule, app, docs, ver, record, today):
             yrs = min(yrs, float(m.group(0)))
         exp = add_years(d, yrs)
         return (doc, p["issue_field"], f" Issued {d.isoformat()}, allowed {yrs:g} years, so valid until {exp.isoformat()}.", {}) if exp < today else None
+    if t == "provisional_age":                        # R59: partial/provisional kinds count for N consecutive academic years
+        kind, d = _val(doc, p["kind_field"]).lower(), parse_date(_val(doc, p["issue_field"]))
+        if d is None or kind not in [k.lower() for k in p["kinds"]]:
+            return None
+        start = d.year if d.month >= int(p.get("ay_start_month", 7)) else d.year - 1   # academic year the certificate was issued in
+        n = int(app.academic_year[:4]) - start + 1                                       # applied year is the n-th from issue
+        if n <= int(p["max_academic_years"]):
+            return None
+        return (doc, p["issue_field"], f" {kind.title()} certificate issued {d.isoformat()} (academic year {start}-{str(start + 1)[-2:]}); "
+                f"{app.academic_year} would be academic year {n} from issue, allowed {p['max_academic_years']}.", {})
     if t == "value_equals":
         v = _val(doc, f)
         return None if not v or v == str(p["expected"]).strip() else (doc, f, f" Read: '{v}'.", {})

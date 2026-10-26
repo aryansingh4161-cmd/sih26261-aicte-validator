@@ -282,6 +282,22 @@ def _fire(P: Painter, inst: Dict, d: Dict, layout: str):
     return truth, {}
 
 
+def _occupancy(P: Painter, inst: Dict, d: Dict, layout: str):
+    P.title("OCCUPANCY CERTIFICATE", 15)
+    P.kv("Certificate No", d["occ_no"], "certificate_no")
+    P.kv("Issued by", d["occ_auth"])
+    P.para(f"This is to certify that the building of {inst['institute_name']}, {inst['address']}, has been completed as per the approved plans and is fit for occupation.")
+    P.kv("Date of Issue", C.fmt_dmy(d["occ_issue_date"]), "issue_date")
+    P.kv("Type of Certificate", d["occ_kind"], "certificate_kind")
+    P.y -= 10
+    P.put(P.x0, P.y, "Competent Authority (Synthetic)")
+    if layout == "B":
+        P.qr(f"mock-issuer://occupancy/{d['occ_no']}", P.x1 - 80, 90, 70)
+    truth = {"certificate_no": d["occ_no"], "issuing_authority": d["occ_auth"], "institute_name": inst["institute_name"],
+             "issue_date": d["occ_issue_date"].isoformat(), "certificate_kind": d["occ_kind"]}
+    return truth, {}
+
+
 def _struct(P: Painter, inst: Dict, d: Dict, layout: str):
     P.title(d["struct_auth"].upper(), 12)
     P.pair(f"No.: {d['struct_no']}", f"Date: {C.fmt_dmy(d['issue_date'])}", "certificate_no", "issue_date")
@@ -338,7 +354,9 @@ def area_rows(inst: Dict, norms_path: str = "config/area_norms.yaml") -> List[Di
 
 
 BUILDERS = {"eoa_letter": _eoa, "affidavit_2": _affidavit, "noc_format2": _noc, "fire_cert": _fire, "structural_cert": _struct,
-            "area_statement": _area}
+            "area_statement": _area, "occupancy_cert": _occupancy}
+OCC_AUTH = ("Building Permission Cell, Municipal Corporation (Synthetic)", "Urban Development Authority (Synthetic)",
+            "Town Planning Department (Synthetic)")
 
 
 def default_details(rng: random.Random, inst: Dict) -> Dict:
@@ -356,11 +374,22 @@ def default_details(rng: random.Random, inst: Dict) -> Dict:
         "issue_date": issue_fire, "valid_until": issue_fire + timedelta(days=365 * 3),
         "struct_no": str(rng.randint(100, 999)), "struct_auth": rng.choice(C.STRUCT_AUTH), "validity_years": rng.choice([3, 5]),
         "areas": area_rows(inst),
+        **_occ_details(inst),
     }
 
 
+def _occ_details(inst: Dict) -> Dict:
+    """Occupancy certificate: full, issued 5-20 years before the academic year. Own random source, so adding it changed
+    no other generated value (existing demo documents and the tamper dataset stay identical)."""
+    r, ay0 = random.Random(f"occ-{inst['permanent_id']}"), int(inst["academic_year"][:4])
+    issued = C.rand_date(r, date(ay0 - 20, 1, 1), date(ay0 - 5, 6, 30))
+    return {"occ_no": f"OC/{issued.year}/{r.randint(10000, 99999)}", "occ_auth": r.choice(OCC_AUTH), "occ_issue_date": issued,
+            "occ_kind": "Full"}
+
+
 CREATED_FROM = {"eoa_letter": "printed_on", "affidavit_2": "sworn_on", "noc_format2": "noc_date", "fire_cert": "issue_date",
-                "structural_cert": "issue_date", "area_statement": "noc_date"}
+                "structural_cert": "issue_date", "area_statement": "noc_date",
+                "occupancy_cert": "occ_issue_date"}
 
 
 def render_pdf(doc_type: str, layout: str, inst: Dict, details: Dict, out_path: str,

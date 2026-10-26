@@ -421,10 +421,27 @@ class _Skip(Exception):
     pass
 
 
+def t_occupancy(m):
+    """WK21: occupancy_cert renders in all 3 layouts, classifies, every field extracts; the pipeline-facing rules fire."""
+    from pramaan.classify_extract import classify_and_extract
+    from pramaan.ingest import ingest
+    rng = random.Random(21); inst = C.make_institute(rng, 2026); det = D.default_details(rng, inst)
+    for lay in D.LAYOUTS:
+        r = D.render_pdf("occupancy_cert", lay, inst, det, os.path.join(TMP, f"occ_{lay}.pdf"))
+        d = classify_and_extract(ingest(r["path"], f"T1-occ{lay}"))
+        assert d.doc_type == "occupancy_cert", (lay, d.doc_type)
+        got = {k: (d.fields[k].value if k in d.fields else None) for k in r["truth"]}
+        assert got == r["truth"], (lay, got, r["truth"])
+    rp = "config/rulepack_eoa_existing.yaml"
+    assert any(x.rule_id == "R-MISS-occupancy_cert" for x in m.run_rules(APP, [], [], None, rp, TODAY))
+    old = _doc("occupancy_cert", certificate_kind="Provisional", issue_date="2023-10-26")
+    assert [x.rule_id for x in m.run_rules(APP, [old], [], None, rp, TODAY) if "occupancy" in x.rule_id] == ["R-PROV-occupancy_cert"]
+
+
 MODULE = {"signature": "forensics", "priority": "priority", "reuse": "reuse", "area": "rules", "issuer_webhook": "issuer_async", "retention": "audit", "masking": "privacy",
           "metadata": "metadata_forensics", "table_borderless": "classify_extract",
           "reuse_photo_strict": "reuse", "reference_sync": "schemas",
-          "audit_close": "audit"}   # test name -> module in pramaan/
+          "audit_close": "audit", "occupancy": "rules"}   # test name -> module in pramaan/
 
 
 TESTS = {"ingest": t_ingest, "classify_extract": t_classify_extract, "rules": t_rules, "crosscheck": t_crosscheck,
@@ -434,7 +451,8 @@ TESTS = {"ingest": t_ingest, "classify_extract": t_classify_extract, "rules": t_
          "retention": t_retention, "masking": t_masking,
          "metadata": t_metadata, "table_borderless": t_table_borderless,
          "reuse_photo_strict": t_reuse_photo_strict,
-         "reference_sync": t_reference_sync, "audit_close": t_audit_close}
+         "reference_sync": t_reference_sync, "audit_close": t_audit_close,
+         "occupancy": t_occupancy}
 
 if __name__ == "__main__":
     want = sys.argv[1:] or list(TESTS)

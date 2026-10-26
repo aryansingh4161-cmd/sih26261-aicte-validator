@@ -26,7 +26,8 @@ Severity = Literal["info", "low", "medium", "high"]
 Lane = Literal["clear", "return_for_rectification", "human_review"]
 FindingSource = Literal["rule", "crosscheck", "pdf_forensics", "tamper_model", "photo", "verification"]
 
-DOC_TYPES = ("eoa_letter", "affidavit_2", "noc_format2", "fire_cert", "structural_cert", "area_statement", "unclassified")
+DOC_TYPES = ("eoa_letter", "affidavit_2", "noc_format2", "fire_cert", "structural_cert", "area_statement", "occupancy_cert",
+             "unclassified")
 CATEGORIES = ("eoa_existing_regular", "intake_increase")
 
 

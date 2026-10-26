@@ -44,6 +44,8 @@ SCENARIOS = {
     "APP-16": (["fire_incremental_edit"], ["F-META-REVISION-DIFF", "F-PDF-INCREMENTAL", "F-PDF-MODDATE", "V-issuer_portal"], "human_review"),
     "APP-17": (["photo_edited_software"], ["F-META-EXIF-SOFTWARE", "F-META-EXIF-THUMB", "F-META-EXIF-DATES", "F-META-JPEG-QT"],
                "human_review"),
+    # WK21: Occupancy / Completion Certificate (Handbook R03) not uploaded; every other app has a full one
+    "APP-18": (["missing_occupancy"], ["R-MISS-occupancy_cert"], "return_for_rectification"),
 }
 
 
@@ -146,6 +148,8 @@ def build(out: str, today: date, seed: int = 11, scenarios: dict | None = None, 
                 img, _ = apply_tamper(img, "replace_digits", box, b["text"], r)
                 jp = os.path.join(ddir, "structural_cert_scan.jpg"); img.save(jp, quality=88)
                 _sidecar_from_pdf(p, jp); os.remove(p); docs["structural_cert"] = jp
+        if "missing_occupancy" not in defects:
+            render("occupancy_cert", inst)
         if signing and "affidavit_2" in docs:
             sign_pdf(docs["affidavit_2"], docs["affidavit_2"], pki,
                      when=datetime.combine(det["sworn_on"], datetime.min.time()).replace(hour=12).astimezone())

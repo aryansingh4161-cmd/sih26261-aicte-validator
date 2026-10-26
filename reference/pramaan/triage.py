@@ -32,7 +32,7 @@ def _kind(f: Finding):
     r = f.rule_id
     if r.startswith(("R-MISS", "R-SIG")):
         return "missing_document"
-    if r.startswith("R-EXP"):
+    if r.startswith(("R-EXP", "R-PROV")):
         return "expired_document"
     if r.startswith(("X-", "R-REC", "R-FLD")):
         return "mismatch"
