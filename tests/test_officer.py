@@ -69,7 +69,31 @@ def t_checklist():
     assert all(r["evidence"] for r in rows1 if r["status"] == "green" and r["id"] in ("R01", "R05")), "green ticks link to the document"
 
 
-TESTS = {"lod": t_lod, "resubmit": t_resubmit, "checklist": t_checklist}
+def t_queue():
+    from pramaan.audit import AuditLog
+    from pramaan.queue import SpotCheckIncomplete, approve_batch, batch_seed, clear_queue, spot_sample
+    rs = results(*[f"APP-{k:02d}" for k in range(1, 22)])
+    q = clear_queue(rs)
+    assert {"APP-01", "APP-11", "APP-21"} <= {r.app_id for r in q} and all(r.lane == "clear" for r in q), [r.app_id for r in q]
+    assert not {"APP-02", "APP-09", "APP-12"} & {r.app_id for r in q}
+    q = [r for r in q if r.app_id in ("APP-01", "APP-11", "APP-21")]              # the three apps clear by design
+    seed = batch_seed([r.app_id for r in q], "2026-10-26")
+    s1 = spot_sample([r.app_id for r in q], seed)
+    assert len(s1) == 1 and s1 == spot_sample([r.app_id for r in q], seed)            # max(1, 10%), repeatable
+    assert len(spot_sample([f"A{i}" for i in range(25)], "x")) == 3                    # ceil(10% of 25)
+    assert spot_sample(["APP-01"], "y") == ["APP-01"]                                  # review focus 3
+    user = {"id": "officer.demo", "role": "scrutiny_officer"}
+    with AuditLog(DB) as log:
+        try:
+            approve_batch(log, user, q, set(), seed); raise AssertionError("approved without the spot check")
+        except SpotCheckIncomplete:
+            pass
+        hs = approve_batch(log, user, q, set(s1), seed)
+        rows = [x for x in log.rows() if x["hash"] in hs]
+    assert len(rows) == 3 and all("auto-cleared, spot-checked 1 of 3" in x["detail"] and x["actor"] == "officer.demo" for x in rows)
+
+
+TESTS = {"lod": t_lod, "resubmit": t_resubmit, "checklist": t_checklist, "queue": t_queue}
 
 if __name__ == "__main__":
     want = sys.argv[1:] or list(TESTS)
