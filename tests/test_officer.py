@@ -93,7 +93,19 @@ def t_queue():
     assert len(rows) == 3 and all("auto-cleared, spot-checked 1 of 3" in x["detail"] and x["actor"] == "officer.demo" for x in rows)
 
 
-TESTS = {"lod": t_lod, "resubmit": t_resubmit, "checklist": t_checklist, "queue": t_queue}
+def t_trust():
+    from pramaan.trust import LABEL, app_score, doc_score
+    r1, r16 = results("APP-01", "APP-16")
+    clean, _ = doc_score(r1, "APP-01-fire_cert")
+    edited, why = doc_score(r16, "APP-16-fire_cert")
+    assert clean > edited and any(f.severity == "high" and f.source == "pdf_forensics" for f in r16.findings), (clean, edited)
+    assert len(why) <= 3 and all("(-" in w for w in why), why
+    a16 = app_score(r16)
+    assert a16["score"] == min(s for s, _ in a16["documents"].values()) and a16["label"] == LABEL
+    assert app_score(r1)["score"] >= 90 and 0 <= a16["score"] <= 100
+
+
+TESTS = {"lod": t_lod, "resubmit": t_resubmit, "checklist": t_checklist, "queue": t_queue, "trust": t_trust}
 
 if __name__ == "__main__":
     want = sys.argv[1:] or list(TESTS)

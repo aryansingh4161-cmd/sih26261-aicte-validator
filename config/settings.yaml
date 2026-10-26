@@ -16,3 +16,7 @@ priority_weights: {high: 0.25, medium: 0.1, low: 0.03, suspected_anomaly: 0.2, o
 issuer_webhook_secret: "DEMO-ONLY-pramaan-issuer-webhook-secret-not-for-production"
 # Retention (tools/retention.py): output files, heatmaps and uploaded-document copies older than this are deleted.
 retention_days: 30             # ASSUMPTION (no AICTE retention period found yet); audit.db is NEVER deleted
+# WK23-5 trust score 0-100 = 100 minus deductions (DESIGNED weights, ASSUMPTION; not a probability). A finding deducts
+# its severity weight x its confidence; a verification result deducts by status.
+trust_weights: {high: 40, medium: 20, low: 8, info: 0, mismatch_detected: 30, expired: 30, verification_pending: 5,
+                source_unavailable: 5, manual_review_required: 10}
