@@ -285,7 +285,16 @@ def t_checks_pages():
     assert at.title[0].value == "Calendar & Exports" and any("Overdue" in m.value for m in at.markdown), [m.value for m in at.markdown][:5]
 
 
-TESTS = {"lod": t_lod, "resubmit": t_resubmit, "checklist": t_checklist, "queue": t_queue, "trust": t_trust, "seal": t_seal, "desk_page": t_desk_page, "yoy": t_yoy, "serial": t_serial, "verify_board": t_verify_board, "expiry": t_expiry, "feedback": t_feedback, "assign": t_assign, "export_case": t_export_case, "checks_pages": t_checks_pages}
+def t_geo():
+    from pramaan.geo import geo_check
+    rs = results(*[f"APP-{k:02d}" for k in range(1, 24)])
+    hits = {r.app_id: [f for f in r.findings if f.rule_id == "X-GEO"] for r in rs}
+    assert len(hits["APP-23"]) == 1 and hits["APP-23"][0].lane == "human_review" and "15." in hits["APP-23"][0].reason, hits["APP-23"]
+    assert not {a for a, v in hits.items() if v and a != "APP-23"}, "no X-GEO on the other 22 apps"
+    assert "MOCK" in hits["APP-23"][0].evidence[0].text
+
+
+TESTS = {"lod": t_lod, "resubmit": t_resubmit, "checklist": t_checklist, "queue": t_queue, "trust": t_trust, "seal": t_seal, "desk_page": t_desk_page, "yoy": t_yoy, "serial": t_serial, "verify_board": t_verify_board, "expiry": t_expiry, "feedback": t_feedback, "assign": t_assign, "export_case": t_export_case, "checks_pages": t_checks_pages, "geo": t_geo}
 
 if __name__ == "__main__":
     want = sys.argv[1:] or list(TESTS)

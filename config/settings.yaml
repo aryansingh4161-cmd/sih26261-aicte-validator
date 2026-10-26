@@ -29,3 +29,5 @@ serial: {text_min: 0.95, days: 30, number_gap: 20, doc_types: [structural_cert, 
 reminder_days: [60, 30, 7]
 # WK23-12 workload assignment: officer SLA in days from assignment, by lane (ASSUMPTION)
 assignment_sla_days: {human_review: 5, return_for_rectification: 3, clear: 2, info: 7}
+# WK23-18 geo check: declared location vs MOCK geocoder of the declared address (ASSUMPTION threshold)
+geo_max_km: 2.0
