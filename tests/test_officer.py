@@ -340,7 +340,28 @@ def t_evc_pack():
     assert verify_sealed(page, DB).startswith("VALID") and "Expert Visit Committee" in page
 
 
-TESTS = {"lod": t_lod, "resubmit": t_resubmit, "checklist": t_checklist, "queue": t_queue, "trust": t_trust, "seal": t_seal, "desk_page": t_desk_page, "yoy": t_yoy, "serial": t_serial, "verify_board": t_verify_board, "expiry": t_expiry, "feedback": t_feedback, "assign": t_assign, "export_case": t_export_case, "checks_pages": t_checks_pages, "geo": t_geo, "selfcheck": t_selfcheck, "selfcheck_page": t_selfcheck_page, "evc_pack": t_evc_pack}
+def t_analytics():
+    import json
+    from pramaan import analytics as A
+    from pramaan.audit import AuditLog
+    rs = results(*[f"APP-{k:02d}" for k in range(1, 24)])
+    mans = {r.app_id: json.load(open(f"data/demo/apps/{r.app_id}.json")) for r in rs}
+    top = A.top_deficiencies(rs)
+    assert top and top[0][1] >= top[-1][1] and len(top) <= 10
+    reg = A.by_region(rs, mans)
+    assert sum(v["applications"] for v in reg.values()) == 23
+    assert sum(A.lane_split(rs).values()) == 23
+    with AuditLog(DB) as log:
+        rows = log.rows()
+    k, n = A.auto_cleared_share(rs, rows)
+    assert n == 23 and 0 <= k <= n
+    assert A.median_processing_days(rs, mans) is not None
+    assert isinstance(A.sla_breaches(rs, rows, TODAY), list)
+    at = _page("dashboard/pages/2_Analytics.py")
+    assert any("Leadership view" in m.value for m in at.markdown), "leadership section rendered"
+
+
+TESTS = {"lod": t_lod, "resubmit": t_resubmit, "checklist": t_checklist, "queue": t_queue, "trust": t_trust, "seal": t_seal, "desk_page": t_desk_page, "yoy": t_yoy, "serial": t_serial, "verify_board": t_verify_board, "expiry": t_expiry, "feedback": t_feedback, "assign": t_assign, "export_case": t_export_case, "checks_pages": t_checks_pages, "geo": t_geo, "selfcheck": t_selfcheck, "selfcheck_page": t_selfcheck_page, "evc_pack": t_evc_pack, "analytics": t_analytics}
 
 if __name__ == "__main__":
     want = sys.argv[1:] or list(TESTS)

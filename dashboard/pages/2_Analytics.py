@@ -14,7 +14,8 @@ import streamlit as st
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from pramaan.audit import GENESIS, AuditLog  # noqa: E402
 
-OUT, DB = "output", "output/audit.db"
+OUT = os.environ.get("PRAMAAN_OUT", "output")
+DB = os.path.join(OUT, "audit.db")
 LANES = ("clear", "return_for_rectification", "human_review")
 SOURCES = ("rule", "crosscheck", "pdf_forensics", "tamper_model", "photo", "verification")
 DECISION_LANE = {"Approve for next step": "clear", "Return for rectification": "return_for_rectification",
@@ -113,3 +114,36 @@ st.caption({True: "Chain intact: every row's hash recomputes from the previous o
             False: f"Chain BROKEN at row {bad_id}: a row was changed or removed.", None: "No audit log yet."}[chain_ok])
 st.dataframe([{k: x[k] for k in ("id", "ts", "actor", "role", "action", "app_id")} | {"hash": x["hash"][:16]} for x in rows[-50:][::-1]],
              hide_index=True, width="stretch")
+
+# ---------------- WK23-16 leadership view (read only) ----------------
+from pramaan import analytics as A  # noqa: E402
+from pramaan.schemas import ApplicationResult  # noqa: E402
+
+st.markdown("## Leadership view")
+RES = [ApplicationResult.model_validate(x) for x in results()]
+MANS = {}
+for p in sorted(glob.glob(os.path.join(os.environ.get("PRAMAAN_APPS", "data/demo/apps"), "*.json"))):
+    m = json.load(open(p)); MANS[m["app_id"]] = m
+c1, c2, c3 = st.columns(3)
+k, n = A.auto_cleared_share(RES, rows)
+c1.metric("Share auto-cleared (clear-queue batches)", f"{k} of {n}")
+med = A.median_processing_days(RES, MANS)
+c2.metric("Median processing time (days, synthetic)", "-" if med is None else f"{med:g}",
+          help="Synthetic: demo submission dates vs the pipeline run time. Not a measured office figure.")
+br = A.sla_breaches(RES, rows, date.today())
+c3.metric("SLA breaches (alerts past due, no decision)", len(br))
+st.markdown("#### Top 10 deficiencies")
+st.dataframe([{"deficiency": title, "count": c} for title, c in A.top_deficiencies(RES)], hide_index=True, width="stretch")
+st.markdown("#### Deficiencies by region")
+st.dataframe([{"region": k2, **v} for k2, v in A.by_region(RES, MANS).items()], hide_index=True, width="stretch")
+st.markdown("#### Lane split")
+st.bar_chart(A.lane_split(RES))
+st.markdown("#### False-alarm rate per rule (officer feedback)")
+fa = A.false_alarms_readonly(DB)
+if fa:
+    st.dataframe([{"rule": r2, **v} for r2, v in sorted(fa.items())], hide_index=True, width="stretch")
+else:
+    st.caption("No officer feedback yet.")
+if br:
+    st.markdown("#### SLA breaches")
+    st.dataframe(br, hide_index=True, width="stretch")
