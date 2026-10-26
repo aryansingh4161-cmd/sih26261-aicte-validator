@@ -213,7 +213,30 @@ def t_expiry():
     assert ics.startswith("BEGIN:VCALENDAR") and ics.count("BEGIN:VEVENT") == len(rows) and "DTSTART;VALUE=DATE:" in ics
 
 
-TESTS = {"lod": t_lod, "resubmit": t_resubmit, "checklist": t_checklist, "queue": t_queue, "trust": t_trust, "seal": t_seal, "desk_page": t_desk_page, "yoy": t_yoy, "serial": t_serial, "verify_board": t_verify_board, "expiry": t_expiry}
+def t_feedback():
+    import csv
+    from pramaan.audit import AuditLog
+    from pramaan.feedback import export_csv, false_alarm_rate, record
+    r9, r17 = results("APP-09", "APP-17")
+    u = {"id": "officer.demo", "role": "scrutiny_officer"}
+    db = os.path.join(TMP, "fb.db")
+    with AuditLog(db) as log:
+        for f in r17.findings:
+            record(db, f, "false alarm" if f.rule_id == "F-META-JPEG-QT" else "correct", u, "weak signal" if "QT" in f.rule_id else "", log)
+        f9 = r9.findings[0]
+        record(db, f9, "false alarm", u, log=log); record(db, f9, "correct", u, "changed my mind", log)      # latest verdict counts
+        assert log.verify_chain() == (True, None) and sum(x["action"].startswith("feedback") for x in log.rows()) == len(r17.findings) + 2
+    rate = false_alarm_rate(db)
+    assert rate["F-META-JPEG-QT"] == {"false_alarms": 1, "n": 1, "rate": 1.0} and rate[f9.rule_id]["false_alarms"] == 0, rate
+    out = export_csv(db, os.path.join(TMP, "feedback.csv"))
+    assert len(list(csv.DictReader(open(out)))) == len(r17.findings) + 2
+    try:
+        record(db, f9, "maybe", u); raise AssertionError("bad verdict accepted")
+    except ValueError:
+        pass
+
+
+TESTS = {"lod": t_lod, "resubmit": t_resubmit, "checklist": t_checklist, "queue": t_queue, "trust": t_trust, "seal": t_seal, "desk_page": t_desk_page, "yoy": t_yoy, "serial": t_serial, "verify_board": t_verify_board, "expiry": t_expiry, "feedback": t_feedback}
 
 if __name__ == "__main__":
     want = sys.argv[1:] or list(TESTS)
