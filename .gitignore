@@ -262,3 +262,8 @@ real_photos/
 data/scans_synth/
 # WK22: per-letter detail of REAL EoA scoring holds real names/values (local only)
 eval/extraction_real_detail*.csv
+
+# WK23: local clone of the IndicTrans2 repo (not ours), mock outbox, translation cache
+IndicTrans2/
+data/outbox/
+output/i18n_cache.db

@@ -166,7 +166,7 @@ def t_reuse(m):
         return DocumentRecord(doc_id=f"{app_id}-fire_cert", filename="f.pdf", path="f.pdf", sha256=sha, doc_type="fire_cert",
                               fields={"certificate_no": ExtractedField(name="certificate_no", value=no),
                                       "issuing_authority": ExtractedField(name="issuing_authority", value=auth)})
-    a = APP.model_copy(update={"app_id": "TA", "photos": [ph]}); b = APP.model_copy(update={"app_id": "TB", "photos": [ph]})
+    a = APP.model_copy(update={"app_id": "TA", "photos": [ph]}); b = APP.model_copy(update={"app_id": "TB", "photos": [ph], "permanent_id": "1-2000002"})
     NO = "FS/2026/4711"
     assert m.check_reuse(a, [doc("TA", NO, "s1")], db) == []
     assert m.check_reuse(a, [doc("TA", NO, "s1")], db) == []          # same app again: no self-match
@@ -177,10 +177,14 @@ def t_reuse(m):
     assert m.check_reuse(a, [doc("TA", NO, "s1")], db) == []          # earlier app re-run: unchanged
     assert m.check_reuse(b, [doc("TB", "FS/2026/9999", "s3")], db)[0].rule_id == "X-REUSE-PHOTO"   # cert changed, photo still shared
     # WK16: short numbers and a different issuer never match
-    c = APP.model_copy(update={"app_id": "TC"}); e = APP.model_copy(update={"app_id": "TE"})
+    c = APP.model_copy(update={"app_id": "TC", "permanent_id": "1-2000003"}); e = APP.model_copy(update={"app_id": "TE", "permanent_id": "1-2000004"})
     m.check_reuse(c, [doc("TC", "585", "s4")], db)
     assert m.check_reuse(e, [doc("TE", "585", "s5")], db) == []                                    # < 6 characters
     assert m.check_reuse(e, [doc("TE", NO, "s6", auth="Other District Fire Office (synthetic)")], db) == []   # other issuer
+    # WK23: a resubmission by the SAME institute (same Permanent Id) may reuse its own photo and certificate
+    db2 = os.path.join(TMP, "reuse_same_pid.db"); r = APP.model_copy(update={"app_id": "TR", "photos": [ph]})
+    m.check_reuse(a, [doc("TA", NO, "s1")], db2)
+    assert m.check_reuse(r, [doc("TR", NO, "s1")], db2) == []
 
 def t_area(m):
     """rules area_min (F9) on a real synthetic area_statement + tools/norms_to_yaml uses ONLY rows with checked = ok."""
@@ -381,8 +385,8 @@ def t_reuse_photo_strict(m):
     Image.open(p1).convert("RGB").save(p3, quality=60)                     # re-saved copy of p1: different bytes
     assert open(p1, "rb").read() != open(p3, "rb").read()
     a = APP.model_copy(update={"app_id": "RA", "photos": [p1]})
-    b = APP.model_copy(update={"app_id": "RB", "photos": [p2]})
-    c = APP.model_copy(update={"app_id": "RC", "photos": [p3]})
+    b = APP.model_copy(update={"app_id": "RB", "photos": [p2], "permanent_id": "1-3000002"})
+    c = APP.model_copy(update={"app_id": "RC", "photos": [p3], "permanent_id": "1-3000003"})
     assert m.check_reuse(a, [], db) == []
     assert [f.rule_id for f in m.check_reuse(b, [], db)] == []              # unrelated photo: no match
     out = m.check_reuse(c, [], db)

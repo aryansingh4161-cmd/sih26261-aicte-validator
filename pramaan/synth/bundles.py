@@ -46,7 +46,17 @@ SCENARIOS = {
                "human_review"),
     # WK21: Occupancy / Completion Certificate (Handbook R03) not uploaded; every other app has a full one
     "APP-18": (["missing_occupancy"], ["R-MISS-occupancy_cert"], "return_for_rectification"),
+    # WK23 officer platform: resubmission of APP-02 (fire now valid; a new stamp deficiency), year-over-year intake jump with
+    # the same built-up area (intake_increase category), serial reuse of one structural certificate across two institutes,
+    # declared location 15 km from the MOCK geocoder (photos are taken at the real campus, so the photo GPS check fires too)
+    "APP-19": (["resubmission_of_app02", "stamp_50"], ["R-FLD-affidavit_2-stamp_value"], "return_for_rectification"),
+    "APP-20": (["intake_jump_same_area"], ["X-YOY-INTAKE"], "human_review"),
+    "APP-21": (["serial_struct_first"], [], "clear"),
+    "APP-22": (["serial_struct_copy"], ["X-SERIAL"], "human_review"),
+    "APP-23": (["declared_location_15km"], ["X-GEO", "F-PHOTO-GPS"], "human_review"),
 }
+SAME_INSTITUTE = {"APP-19": "APP-02"}                       # resubmission: same institute, same Permanent Id
+REGION_OFFICER = {"North-West": "officer.nw", "South-East": "officer.se", "Central": "officer.central", "West": "officer.west"}
 
 
 def _sidecar_from_pdf(pdf_path, img_path):
@@ -69,7 +79,7 @@ def build(out: str, today: date, seed: int = 11, scenarios: dict | None = None, 
     scenarios, reuse_from = scenarios or SCENARIOS, reuse_from or REUSE_FROM
     rng = random.Random(seed)
     os.makedirs(os.path.join(out, "apps"), exist_ok=True)
-    records, fire_db, uni_db, truth = {}, {}, {}, {}
+    records, fire_db, uni_db, truth, geocoder, insts = {}, {}, {}, {}, {}, {}
     shared = {}                                         # values later apps reuse (F8)
     signing = can_sign()
     pki = make_pki(os.path.join(out, "pki"), root_copy=root_copy) if signing else None
@@ -78,10 +88,16 @@ def build(out: str, today: date, seed: int = 11, scenarios: dict | None = None, 
     for app_id, (defects, expect, lane) in scenarios.items():
         r = random.Random(f"{seed}-{app_id}")
         inst = C.make_institute(r, ay0)
+        if app_id in SAME_INSTITUTE:
+            inst = copy.deepcopy(insts[SAME_INSTITUTE[app_id]])
+        insts[app_id] = copy.deepcopy(inst)
         if "struct_missing_old_building" in defects or "struct_short_validity" in defects or "scanned_struct_tampered" in defects:
             inst["building_completion_date"] = date(r.randint(1980, 1992), 6, 1).isoformat()
         prev = copy.deepcopy(inst); prev["academic_year"] = inst["prev_academic_year"]; prev["prev_academic_year"] = f"{ay0 - 2}-{str(ay0 - 1)[-2:]}"
         prev["application_id"] = f"1-{r.randint(10000000000, 99999999999)}"     # last year's application had its own id
+        if "intake_jump_same_area" in defects:                     # this year +50% on every programme, area unchanged
+            for p in inst["programs"]:
+                p["intake_curr"] = str(int(p["intake_prev"]) * 3 // 2)
         det = D.default_details(r, inst); pdet = D.default_details(r, prev)
         det["issue_date"] = today - timedelta(days=r.randint(200, 500)); det["valid_until"] = det["issue_date"] + timedelta(days=365 * 3)
         submitted = today - timedelta(days=r.randint(5, 20))
@@ -91,9 +107,9 @@ def build(out: str, today: date, seed: int = 11, scenarios: dict | None = None, 
         sdet["issue_date"] = today - timedelta(days=r.randint(200, 600))
         layout = r.choice("ABC")
         ddir = os.path.join(out, "docs", app_id); os.makedirs(ddir, exist_ok=True)
-        docs = {}
+        docs, truths = {}, {}
         def render(dt, i=inst, d=det, lay=layout, **kw):
-            p = os.path.join(ddir, f"{dt}.pdf"); D.render_pdf(dt, lay, i, d, p, **kw); docs[dt] = p; return p
+            p = os.path.join(ddir, f"{dt}.pdf"); truths[dt] = D.render_pdf(dt, lay, i, d, p, **kw)["truth"]; docs[dt] = p; return p
         render("eoa_letter", prev, pdet, producer="Oracle BI Publisher 11.1.1.9.0 (synthetic)")
         aff_inst = inst
         if "stamp_50" in defects:
@@ -135,6 +151,10 @@ def build(out: str, today: date, seed: int = 11, scenarios: dict | None = None, 
                                   datetime.combine(submitted - timedelta(days=3), datetime.min.time()).replace(hour=11))
         elif "missing_fire" not in defects:
             render("fire_cert", fire_inst)
+        if "serial_struct_first" in defects:                       # WK23: the copied certificate's details
+            shared["serial"] = {k: sdet[k] for k in ("struct_no", "struct_auth", "validity_years", "issue_date")}
+        if "serial_struct_copy" in defects:                        # same engineer, date, validity; next number
+            sdet.update(shared["serial"]); sdet["struct_no"] = str(int(shared["serial"]["struct_no"]) + 1)
         if "struct_short_validity" in defects:
             sdet["issue_date"] = today - timedelta(days=365 * 4); sdet["validity_years"] = 3
         if "struct_missing_old_building" not in defects:
@@ -161,10 +181,14 @@ def build(out: str, today: date, seed: int = 11, scenarios: dict | None = None, 
             other = C.make_institute(random.Random(f"other-{app_id}"), ay0 - 1)
             prev2 = copy.deepcopy(prev); prev2["permanent_id"] = other["permanent_id"]
             render("eoa_letter", prev2, pdet, producer="Oracle BI Publisher 11.1.1.9.0 (synthetic)")
-        records[pid] = {"institute_name": inst["institute_name"], "trust_name": inst["trust_name"], "address": inst["address"],
+        records[pid] = records.get(pid) or {"institute_name": inst["institute_name"], "trust_name": inst["trust_name"], "address": inst["address"],
                         "building_completion_date": inst["building_completion_date"], "latitude": inst["latitude"],
                         "longitude": inst["longitude"], "ter_paid": "fee_unpaid" not in defects, "last_eoa_year": prev["academic_year"],
-                        "approved_programs": [{"course": p["course"], "intake_prev": p["intake_curr"]} for p in inst["programs"]]}
+                        "approved_programs": [{"course": p["course"], "intake_prev": p["intake_curr"]} for p in prev["programs"]],
+                        "last_built_up_area_sqm": truths.get("area_statement", {}).get("total_built_up_area_sqm"),
+                        "last_approval_date": pdet["approval_date"].isoformat(), "region": inst["region"]}
+        geocoder[inst["address"]] = {"latitude": inst["latitude"], "longitude": inst["longitude"], "source": "MOCK geocoder"}
+        dlat = 0.135 if "declared_location_15km" in defects else 0.0          # 0.135 deg latitude ~ 15 km
         pdir = os.path.join(out, "photos", app_id); os.makedirs(pdir, exist_ok=True)
         photos = []
         for k in range(2):
@@ -180,18 +204,23 @@ def build(out: str, today: date, seed: int = 11, scenarios: dict | None = None, 
             _edit_photo(photos[0], datetime.combine(submitted - timedelta(days=10), datetime.min.time()).replace(hour=10))
         if "photo_duplicate" in defects:
             pp = os.path.join(pdir, "campus_3.jpg"); _photo(pp, r, inst["latitude"], inst["longitude"], seed_img=Image.open(photos[1]).copy()); photos.append(pp)
-        man = {"app_id": app_id, "category": "eoa_existing_regular", "academic_year": inst["academic_year"], "permanent_id": pid,
-               "submitted_on": submitted.isoformat(), "declared": {"institute_name": inst["institute_name"], "latitude": inst["latitude"],
-               "longitude": inst["longitude"]}, "documents": [{"slot": k, "path": v} for k, v in docs.items()], "photos": photos}
+        man = {"app_id": app_id, "category": "intake_increase" if "intake_jump_same_area" in defects else "eoa_existing_regular",
+               "academic_year": inst["academic_year"], "permanent_id": pid,
+               "submitted_on": submitted.isoformat(), "declared": {"institute_name": inst["institute_name"], "latitude": round(inst["latitude"] + dlat, 5),
+               "longitude": inst["longitude"], "address": inst["address"], "region": inst["region"],
+               "assigned_officer": REGION_OFFICER[inst["region"]], "consent_digilocker": int(app_id[-2:]) % 3 != 0},
+               "documents": [{"slot": k, "path": v} for k, v in docs.items()], "photos": photos}
         with open(os.path.join(out, "apps", f"{app_id}.json"), "w") as f:
             json.dump(man, f, indent=2)
         truth[app_id] = {"defects": defects, "expected_rules": expect + ([] if signing else ["R-SIG-affidavit_2"]),
                          "expected_lane": lane if signing or lane != "clear" else "return_for_rectification", "layout": layout,
-                         "needs_model": "scanned_struct_tampered" in defects}
+                         "needs_model": "scanned_struct_tampered" in defects,
+                         **({"resubmission_of": SAME_INSTITUTE[app_id]} if app_id in SAME_INSTITUTE else {})}
     os.makedirs(os.path.join(data_dir, "mock_issuers"), exist_ok=True)
     json.dump(records, open(os.path.join(data_dir, "aicte_records.json"), "w"), indent=2)
     json.dump(fire_db, open(os.path.join(data_dir, "mock_issuers", "fire.json"), "w"), indent=2)
     json.dump(uni_db, open(os.path.join(data_dir, "mock_issuers", "university.json"), "w"), indent=2)
+    json.dump(geocoder, open(os.path.join(data_dir, "mock_issuers", "geocoder.json"), "w"), indent=2)
     json.dump({"today": today.isoformat(), "signed_affidavits": signing, "apps": truth}, open(os.path.join(out, "truth.json"), "w"), indent=2)
     return truth
 

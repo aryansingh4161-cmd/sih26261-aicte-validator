@@ -3,7 +3,15 @@ roles:
   scrutiny_officer: [read, decide]
   viewer: [read]
   admin: [read, run_pipeline]
+  institute: [self_check]          # WK23: an institute sees only its own applications (Permanent Id)
 users:
   - {id: officer.demo, name: Demo Scrutiny Officer, role: scrutiny_officer}
   - {id: viewer.demo, name: Demo Viewer, role: viewer}
   - {id: admin.demo, name: Demo Admin, role: admin}
+  # WK23 regional scrutiny officers (demo): workload assignment by region
+  - {id: officer.nw, name: Demo Officer North-West, role: scrutiny_officer, regions: [North-West]}
+  - {id: officer.se, name: Demo Officer South-East, role: scrutiny_officer, regions: [South-East]}
+  - {id: officer.central, name: Demo Officer Central, role: scrutiny_officer, regions: [Central]}
+  - {id: officer.west, name: Demo Officer West, role: scrutiny_officer, regions: [West]}
+  - {id: officer.west2, name: Demo Officer West 2, role: scrutiny_officer, regions: [West]}
+  - {id: institute.demo, name: Demo Institute (APP-02 / APP-19), role: institute, permanent_id: from_app APP-02}

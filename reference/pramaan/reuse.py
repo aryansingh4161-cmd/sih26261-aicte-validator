@@ -49,6 +49,7 @@ def _db(path: str) -> sqlite3.Connection:
     c = sqlite3.connect(path)
     c.execute("CREATE TABLE IF NOT EXISTS apps (seq INTEGER PRIMARY KEY AUTOINCREMENT, app_id TEXT UNIQUE)")
     c.execute("CREATE TABLE IF NOT EXISTS items (app_id TEXT, kind TEXT, key TEXT, ref TEXT)")
+    c.execute("CREATE TABLE IF NOT EXISTS app_pid (app_id TEXT PRIMARY KEY, pid TEXT)")   # WK23: same institute = resubmission
     return c
 
 
@@ -83,12 +84,15 @@ def check_reuse(app: Application, docs: list[DocumentRecord], index_db: str = "o
     try:
         c.execute("INSERT OR IGNORE INTO apps (app_id) VALUES (?)", (app.app_id,))
         seq = c.execute("SELECT seq FROM apps WHERE app_id=?", (app.app_id,)).fetchone()[0]
-        earlier = "SELECT i.app_id, i.key, i.ref FROM items i JOIN apps a ON a.app_id=i.app_id WHERE a.seq<? AND i.kind=?"
+        c.execute("INSERT OR REPLACE INTO app_pid VALUES (?,?)", (app.app_id, app.permanent_id))
+        # an institute may reuse its OWN documents in a resubmission: other applications with the same Permanent Id are skipped
+        earlier = ("SELECT i.app_id, i.key, i.ref FROM items i JOIN apps a ON a.app_id=i.app_id LEFT JOIN app_pid p ON p.app_id=i.app_id "
+                   "WHERE a.seq<? AND i.kind=? AND COALESCE(p.pid, '') != ?")
         out, seen = [], set()
         for kind, key, ref in items:
             if kind == "photo":
                 hits = []
-                for a, k, r in c.execute(earlier, (seq, "photo")):
+                for a, k, r in c.execute(earlier, (seq, "photo", app.permanent_id)):
                     if k.count("|") != 2:                      # index row from before WK15 (ahash only): not comparable
                         continue
                     same, bits, mad = photo_distance(key, k)
@@ -97,10 +101,10 @@ def check_reuse(app: Application, docs: list[DocumentRecord], index_db: str = "o
             elif kind == "cert":
                 ref, my_iss = ref.split("|", 1)
                 need = key.split(":", 1)[0] in ISSUER_FIELD
-                hits = [(a, r.split("|", 1)[0]) for a, k, r in c.execute(earlier, (seq, kind)) if k == key and "|" in r
+                hits = [(a, r.split("|", 1)[0]) for a, k, r in c.execute(earlier, (seq, kind, app.permanent_id)) if k == key and "|" in r
                         and (not need or (my_iss and similarity(my_iss, r.split("|", 1)[1]) >= ISSUER_SIM))]
             else:
-                hits = [(a, r) for a, k, r in c.execute(earlier, (seq, kind)) if k == key]
+                hits = [(a, r) for a, k, r in c.execute(earlier, (seq, kind, app.permanent_id)) if k == key]
             rule = "X-REUSE-PHOTO" if kind == "photo" else "X-REUSE-CERT"
             if not hits or (rule, ref) in seen:
                 continue
