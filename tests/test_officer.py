@@ -58,7 +58,18 @@ def t_resubmit():
     assert compare(None, r19)["summary"] == "0 of 0 deficiencies resolved; 0 still open; 1 new"     # review focus 2
 
 
-TESTS = {"lod": t_lod, "resubmit": t_resubmit}
+def t_checklist():
+    from pramaan.checklist import counts, tick
+    r1, r2 = results("APP-01", "APP-02")
+    rows1 = tick(r1)
+    assert {r["status"] for r in rows1} == {"green", "grey"} and counts(rows1) == "11 green, 0 amber, 0 red, 3 grey", counts(rows1)
+    rows2 = {r["id"]: r for r in tick(r2)}
+    assert rows2["R05"]["status"] == "red" and rows2["R05"]["finding_ids"], rows2["R05"]
+    assert sum(r["status"] == "red" for r in rows2.values()) == 1, counts(list(rows2.values()))
+    assert all(r["evidence"] for r in rows1 if r["status"] == "green" and r["id"] in ("R01", "R05")), "green ticks link to the document"
+
+
+TESTS = {"lod": t_lod, "resubmit": t_resubmit, "checklist": t_checklist}
 
 if __name__ == "__main__":
     want = sys.argv[1:] or list(TESTS)
