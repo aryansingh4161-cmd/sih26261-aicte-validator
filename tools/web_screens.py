@@ -20,6 +20,13 @@ SHOTS = [
     ("16_batch_approve", "/", {}, [("click", "Approve clear files"), ("wait", 800), ("click_sel", ".spotbox .btn.small"), ("wait", 1500),
                                    ("click", "I opened it and agree")]),
     ("18_states", "/states", {}, []),
+    ("03_case_evidence", "/case/APP-07", {}, []),
+    ("03_case_evidence_dark", "/case/APP-07", {"theme": "dark"}, []),
+    ("04_checklist", "/case/APP-07/checklist", {}, []),
+    ("05_verification_sources", "/case/APP-07/sources", {}, []),
+    ("05b_preview_drawer", "/case/APP-07/sources", {}, [("click_sel", "td .btn.small"), ("wait", 1200)]),
+    ("06_changes_since_2025", "/case/APP-20/changes", {}, []),
+    ("07_resubmission", "/case/APP-19/resubmission", {}, []),
 ]
 
 

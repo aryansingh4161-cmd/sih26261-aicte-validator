@@ -143,8 +143,8 @@ def checklist(ctx: Ctx, app_id: str) -> list[dict]:
     out = []
     for i, row in enumerate(tick(r, lang=ctx.lang), 1):
         fs = [byid[x] for x in row.get("finding_ids", []) if x in byid]
-        src = ("Officer checks by hand" if row["status"] == "grey" else
-               next((f"{v.source} (demo adapter)" for f in fs if f.source == "verification" for v in r.verifications
+        src = ("Officer checks by hand" if row["status"] == "grey" else "Map check (demo adapter)" if row["id"] == "R06" else
+               next((f"{v.source.replace('MOCK ', '')} (demo adapter)" for f in fs if f.source == "verification" for v in r.verifications
                      if v.doc_id == f.doc_id and f.rule_id == f"V-{v.method}"), None) or
                ("Cross-check" if any(f.source == "crosscheck" for f in fs) else "AICTE records (demo adapter)" if row["id"] == "R02" else "Document text"))
         verdicts = [fb[f.finding_id]["verdict"] for f in fs if f.finding_id in fb]

@@ -31,13 +31,26 @@ def sources(ctx: Ctx, app_id: str) -> dict:
     r, m = ctx.result(app_id), ctx.manifest(app_id)
     docs = {d.doc_id: d for d in r.documents}
     rows = []
+    def answer(b, d) -> str:
+        """A plain sentence from the source's compared fields (which matched, which did not)."""
+        v = next((v for v in r.verifications if v.doc_id == b["document"] and v.source == b["source"]), None)
+        if not v or not v.compared:
+            return (v.note if v and v.note else b["compared"]) or ""
+        nice = lambda f: f.replace("_", " ")
+        bad = [c for c in v.compared if not c.match]
+        if not bad:
+            names = [nice(c.field) for c in v.compared]
+            return "Found. " + (" and ".join(names) if len(names) < 3 else ", ".join(names[:-1]) + " and " + names[-1]).capitalize() + (" matches" if len(names) == 1 else " match")
+        c = bad[0]
+        return f"Found. {nice(c.field).capitalize()} differs: the file says '{c.submitted}', the source says '{c.returned}'"
     for b in board(r, Application(**m), "en"):
         d = docs.get(b["document"])
         ref = (d.fields["certificate_no"].value if d and "certificate_no" in d.fields else None) if d else None
         word, lane = RESULT.get(b["status"], (b["status"], "human_review"))
-        rows.append({"source": b["source"].replace("MOCK ", ""), "demo": b["mock"],
+        src = b["source"].replace("MOCK ", "")
+        rows.append({"source": src[:1].upper() + src[1:], "demo": b["mock"],
                      "asked": ctx.tr(f"{DOC_LABEL.get(d.doc_type, d.doc_type)} for {app_id}" if d else f"Records for {app_id}") + (f" ({ref})" if ref else ""),
-                     "answer": ctx.tr(b["compared"] or ""), "when": b["checked_at"], "result": ctx.tr(word), "lane": lane,
+                     "answer": ctx.tr(answer(b, d)[:1].upper() + answer(b, d)[1:]), "when": b["checked_at"], "result": ctx.tr(word), "lane": lane,
                      "doc_id": b["document"] if d else None, "preview": b["status"] not in ("unavailable", "consent not given")})
     reuse = [f for f in r.findings if f.rule_id in ("X-SERIAL", "X-REUSE-CERT", "X-REUSE-PHOTO")]
     rows.append({"source": "Serial register", "demo": False, "asked": ctx.tr("Certificate numbers, text and photos of this file"),
@@ -118,10 +131,13 @@ def resubmission(ctx: Ctx, app_id: str) -> dict:
              "result": ctx.tr({"resolved": "Fixed", "still open": "Still open", "new": "New"}[x["status"]]), "status": x["status"]}
             for x in d["deficiencies"]]
     fixed = sum(x["status"] == "resolved" for x in rows)
-    slot = next((c["slot"] for c in d["changed_documents"]), None)
+    slots = {c["slot"] for c in d["changed_documents"]}
+    tied = [sl for x in d["deficiencies"] for sl in slots if x["rule_id"].endswith(sl) or f"-{sl}-" in x["rule_id"]]
+    slot = (tied or [c["slot"] for c in d["changed_documents"]] or [None])[0]     # the document behind the first deficiency
     img = lambda res: next((f"/api/documents/{res.app_id}/{doc.doc_id}/page/1.png" for doc in res.documents if (doc.slot or "") == slot), None)
     return {"available": True, "previous": prev[-1], "headline": ctx.tr(f"{fixed} of {sum(x['status'] != 'new' for x in rows)} issues fixed."),
-            "summary": d["summary"], "rows": rows, "documents": d["documents"], "slot": slot, "before_image": img(p), "after_image": img(n)}
+            "summary": d["summary"], "rows": rows, "documents": d["documents"], "slot": ctx.tr(DOC_LABEL.get(slot, slot)) if slot else None,
+            "before_image": img(p), "after_image": img(n)}
 
 
 def letter_draft(ctx: Ctx, app_id: str, include: list[str] | None = None) -> dict:

@@ -17,3 +17,17 @@ export type Case = { app_id: string; institute: string; permanent_id: string; ca
   findings: Finding[]; tamper: { ran: boolean; found: boolean; text: string }; timeline: TimelineEvent[]; action: string };
 export type Officer = { id: string; name: string; regions: string[] };
 export type Batch = { files: { app_id: string; institute: string }[]; spot: string[]; seed: string; note: string };
+export type ChecklistRow = { n: number; id: string; ref: string | null; item: string; status: string; status_label: string; found: string;
+  source: string; finding_ids: string[]; officer: string | null };
+export type SourceRow = { id: number; source: string; demo: boolean; asked: string; answer: string; when: string | null; result: string;
+  lane: string; doc_id: string | null; preview: boolean };
+export type Sources = { count: number; rows: SourceRow[] };
+export type Preview = SourceRow & { kv: { k: string; v: string }[]; image: string | null; box: Box | null; note: string };
+export type Changes = { changed: number; total: number; rows: { field: string; before: string; after: string; change: string; flag: boolean }[];
+  findings: { rule_id: string; title: string; reason: string }[]; note: string; source: string };
+export type Resubmission = { available: boolean; note?: string; previous?: string; headline?: string; summary?: string;
+  rows?: { issue: string; before: string; after: string; result: string; status: string }[]; slot?: string | null;
+  before_image?: string | null; after_image?: string | null };
+export type Note = { note_id?: number; ts: string; author: string; text: string; mentions?: string[] };
+export type LetterDraft = { app_id: string; text: string; items: { finding_id: string; rule_id: string; title: string; lane: string; include: boolean;
+  clause: string | null; clause_check: { found: boolean; page: number | null } }[]; quotes: { found: number; total: number; label: string } };

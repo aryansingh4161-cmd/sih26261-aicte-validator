@@ -99,7 +99,7 @@ main.content { grid-column: 2; overflow: auto; min-width: 0; }
 .finding { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); padding: 12px 14px; }
 .finding + .finding { margin-top: 10px; }
 .finding-top { display: flex; align-items: center; gap: 8px; }
-.finding .rule { font-size: 12px; color: var(--muted); }
+.finding .rule { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .finding-title { font-weight: 500; font-size: 14.5px; margin-top: 6px; }
 .finding-reason { color: var(--muted); font-size: 12.5px; margin-top: 3px; }
 .chain { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 10px; }
@@ -156,3 +156,46 @@ h3.sec { font-size: 18px; margin-bottom: 10px; }
 .state-title .ic svg { width: 22px; height: 22px; }
 .states-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 24px; }
 .states-grid > div { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); min-height: 380px; display: flex; flex-direction: column; justify-content: center; }
+
+/* ---- 03-07 case frame ---- */
+.casepage { display: flex; flex-direction: column; min-height: 100%; }
+.casehead { padding: 18px 32px 16px; }
+.crumbs { display: flex; align-items: center; gap: 4px; font-size: 12.5px; color: var(--muted); }
+.crumbs a { color: var(--muted); }
+.crumbs .ic svg { width: 14px; height: 14px; fill: var(--muted); }
+.casehead-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; margin-top: 8px; }
+.case-title { font-size: 28px; line-height: 1.15; }
+.tabband { background: var(--band); border-top: 1px solid var(--band-line); border-bottom: 1px solid var(--band-line); display: flex; gap: 26px; padding: 0 32px; }
+.tabband a { color: var(--muted); padding: 11px 0 9px; border-bottom: 2px solid transparent; font-size: 14.5px; text-decoration: none; white-space: nowrap; }
+.tabband a:hover { color: var(--text); }
+.tabband a.on { color: var(--text); font-weight: 500; border-bottom-color: var(--gold); }
+.casebody { flex: 1; min-height: 0; }
+.tabpage { padding: 22px 32px 36px; }
+.tabpage-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; margin-bottom: 14px; }
+.tabpage-head h3 { font-family: var(--font-body); font-weight: 500; font-size: 15.5px; }
+.tabpage-head p { margin: 3px 0 0; color: var(--muted); font-size: 13px; }
+
+/* ---- 03 Evidence ---- */
+.evidence { display: grid; grid-template-columns: 250px minmax(420px, 1fr) 350px; min-height: 100%; }
+.doclist { border-inline-end: 1px solid var(--border); padding: 18px 12px; }
+.docitem { display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 10px; border: 0; background: none; border-radius: var(--radius); cursor: pointer; text-align: start; font-size: 14px; }
+.docitem:hover { background: color-mix(in srgb, var(--surface2) 60%, transparent); }
+.docitem.on { background: var(--surface2); font-weight: 500; }
+.docitem .name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.docitem .pages { font-size: 12px; }
+.viewcol { padding: 18px 24px; min-width: 0; }
+.viewbar { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; font-size: 14px; }
+.viewwrap { max-width: 400px; margin: 0 auto; }
+.sidecol { border-inline-start: 1px solid var(--border); padding: 18px 20px; }
+.tamperbox { display: flex; gap: 12px; align-items: flex-start; background: var(--surface2); border-radius: var(--radius); padding: 11px 14px; margin-top: 10px; font-size: 13.5px; }
+.tamperbox b { font-weight: 500; }
+.note-card { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); padding: 11px 14px; font-size: 13.5px; margin-bottom: 8px; }
+.note-add { display: flex; align-items: center; gap: 10px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); padding: 0 12px; }
+.note-add .ic svg { fill: var(--muted); }
+.note-add input { flex: 1; height: 38px; border: 0; background: transparent; color: var(--text); font: inherit; font-size: 13.5px; }
+.note-add input:focus { outline: none; }
+.resub { display: grid; grid-template-columns: 1fr 420px; gap: 28px; }
+.beforeafter { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 10px; }
+.beforeafter figure { margin: 0; }
+.beforeafter figcaption { font-size: 12.5px; margin-bottom: 6px; }
+.beforeafter img { width: 100%; border: 1px solid var(--border); background: var(--page); display: block; }
