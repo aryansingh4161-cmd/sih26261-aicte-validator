@@ -258,3 +258,4 @@
 - WK25-23: notes.py (notes table, @mentions, hashed audit rows) + export_case(institute_copy=True). Test PASS.
 - WK25-24: rule_admin.py (check_clause vs local Handbook PDF, propose/apply with temp copy + contract test, version, audit, coverage), config/rule_coverage.yaml (partial: 8 of 59 rows mapped; team sheet pending), rule pack gains `version: 1`, tests.test_contracts t_rules reads PRAMAAN_RULEPACK. All 7 rule-pack clauses verified word for word. Test PASS.
 - WK25-25: docs/PRIVACY.md, TERMS.md, ACCESSIBILITY.md; README.md restored (from README_V1.md + header + links). Test PASS.
+- WK25-26: eval/extraction_real.py normalises whitespace on both sides (+ dates joined across line breaks). Dev re-run and held-out test WAITING for the answer key (6 held-out PDFs present: EOA7, 8, 10, 11, 12, 13; not opened). Test PASS.

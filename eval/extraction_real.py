@@ -23,8 +23,9 @@ SKIP = {"NOT PRESENT", "UNREADABLE", ""}
 
 
 def norm(field: str, v: str | None) -> str:
-    v = (v or "").strip()
+    v = re.sub(r"\s+", " ", v or "").strip()          # WK25: both sides - strip, every run of spaces / line breaks -> one space
     if field in ("approval_date", "printed_on"):
+        v = re.sub(r"\s*([-/.])\s*", r"\1", v)                # a date broken over a line: "25-04- 2025" -> "25-04-2025"
         d = parse_date(v)
         return iso(d) if d else v.upper()
     return re.sub(r"\s+", " ", re.sub(r"\s*&\s*", " AND ", v)).strip().upper()     # WK22: "&" == "AND", both sides

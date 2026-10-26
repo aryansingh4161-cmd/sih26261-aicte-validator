@@ -131,7 +131,15 @@ def t_policy_docs():
         assert word.lower() in priv.lower(), word
 
 
-TESTS = {"case_timeline": t_case_timeline, "search": t_search, "notes": t_notes, "rule_admin": t_rule_admin, "policy_docs": t_policy_docs}
+def t_scorer_norm():
+    from eval.extraction_real import norm
+    assert norm("institute_name", "  MODERN INSTITUTE OF\nTECHNOLOGY &  RESEARCH\n CENTRE ") == norm("institute_name", "Modern Institute of Technology and Research Centre")
+    assert norm("approval_date", " 25-04-\n2025 ") == norm("approval_date", "2025-04-25") == "2025-04-25"
+    assert norm("file_no", "North-West/1-2/2025/EOA\n") == "NORTH-WEST/1-2/2025/EOA"
+    assert norm("institute_name", "A & B") != norm("institute_name", "A B")
+
+
+TESTS = {"case_timeline": t_case_timeline, "search": t_search, "notes": t_notes, "rule_admin": t_rule_admin, "policy_docs": t_policy_docs, "scorer_norm": t_scorer_norm}
 
 if __name__ == "__main__":
     want = sys.argv[1:] or list(TESTS)
