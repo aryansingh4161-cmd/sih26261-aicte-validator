@@ -8,6 +8,21 @@ against the Approval Process Handbook rules, cross-checks them, looks for possib
 - What it can do: [docs/FEATURES.md](docs/FEATURES.md) - contracts: [docs/CONTRACTS.md](docs/CONTRACTS.md) - adapters: [docs/ADAPTERS.md](docs/ADAPTERS.md)
 - Numbers: eval/results.csv (every number labelled measured / mocked / designed / assumption)
 
+## Web app (WK26, the "Desk" design)
+- **Live demo:** https://aryansingh4161-cmd.github.io/sih26261-aicte-validator/ (demo mode: the 23 synthetic files, no server;
+  your actions stay in your browser). Built and deployed by `.github/workflows/pages.yml` on every push to `main` that touches `web/`.
+- **Run it locally (live mode, real engine):**
+
+      pip install -r requirements.txt
+      python -m pramaan.synth.bundles                                   # the 23 synthetic files in data/demo/apps (once)
+      python -m pramaan.pipeline data/demo/apps/*.json --today 2026-10-26   # results in output/
+      uvicorn api.main:app --port 8600                                  # API, wraps pramaan/
+      npm --prefix web install && npm --prefix web run dev              # http://127.0.0.1:5173 (proxies /api to 8600)
+
+- Demo mode locally (no Python): `npm --prefix web run dev -- --mode demo`. Rebuild the snapshot: `python -m tools.export_snapshot`.
+- Tests: `python -m tests.test_api`, `python -m tests.test_web_flows` (starts both servers), accessibility: `python -m tools.a11y_check`.
+- The Streamlit dashboard in `dashboard/` stays as the backup.
+
 ---
 
 # Pramaan starter v1 (Sun 25 Oct ~12:00). Unzip ON TOP of the repo (it does not overwrite anyone's module).
