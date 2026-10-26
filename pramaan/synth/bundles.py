@@ -80,6 +80,7 @@ def build(out: str, today: date, seed: int = 11, scenarios: dict | None = None, 
     rng = random.Random(seed)
     os.makedirs(os.path.join(out, "apps"), exist_ok=True)
     records, fire_db, uni_db, truth, geocoder, insts = {}, {}, {}, {}, {}, {}
+    occ_db, nba_db, digilocker = {}, {}, {}                 # WK23-9 MOCK municipal register, NBA, DigiLocker
     shared = {}                                         # values later apps reuse (F8)
     signing = can_sign()
     pki = make_pki(os.path.join(out, "pki"), root_copy=root_copy) if signing else None
@@ -176,6 +177,10 @@ def build(out: str, today: date, seed: int = 11, scenarios: dict | None = None, 
         if "fire_cert" in docs and not {"fire_not_in_issuer_db", "fire_no_reused_from_app03"} & set(defects):
             fire_db[det["fire_no"]] = {"valid_until": real_valid.isoformat(), "institute_name": inst["institute_name"]}
         uni_db[det["noc_ref"]] = {"institute_name": inst["institute_name"]}
+        if "occupancy_cert" in docs:
+            occ_db[det["occ_no"]] = {"institute_name": inst["institute_name"], "issue_date": det["occ_issue_date"].isoformat(), "kind": det["occ_kind"]}
+        nba_db[inst["permanent_id"]] = {"accredited_courses": [p["course"] for p in inst["programs"][:int(inst["permanent_id"][-1]) % 3]]}
+        digilocker[inst["permanent_id"]] = sorted(k for k in ("fire_cert", "occupancy_cert") if k in docs)
         pid = inst["permanent_id"]
         if "eoa_other_institute" in defects:
             other = C.make_institute(random.Random(f"other-{app_id}"), ay0 - 1)
@@ -221,6 +226,8 @@ def build(out: str, today: date, seed: int = 11, scenarios: dict | None = None, 
     json.dump(fire_db, open(os.path.join(data_dir, "mock_issuers", "fire.json"), "w"), indent=2)
     json.dump(uni_db, open(os.path.join(data_dir, "mock_issuers", "university.json"), "w"), indent=2)
     json.dump(geocoder, open(os.path.join(data_dir, "mock_issuers", "geocoder.json"), "w"), indent=2)
+    for name, db in (("occupancy", occ_db), ("nba", nba_db), ("digilocker", digilocker)):
+        json.dump(db, open(os.path.join(data_dir, "mock_issuers", f"{name}.json"), "w"), indent=2)
     json.dump({"today": today.isoformat(), "signed_affidavits": signing, "apps": truth}, open(os.path.join(out, "truth.json"), "w"), indent=2)
     return truth
 

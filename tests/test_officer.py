@@ -178,7 +178,23 @@ def t_serial():
     assert not false, false                                      # 0 false matches on the other 22 apps (APP-01..18 included)
 
 
-TESTS = {"lod": t_lod, "resubmit": t_resubmit, "checklist": t_checklist, "queue": t_queue, "trust": t_trust, "seal": t_seal, "desk_page": t_desk_page, "yoy": t_yoy, "serial": t_serial}
+def t_verify_board():
+    import json
+    from pramaan.schemas import Application
+    from pramaan.verify_board import board
+    r1, r3 = results("APP-01", "APP-03")
+    app = lambda a: Application(**json.load(open(f"data/demo/apps/{a}.json")))
+    b1 = board(r1, app("APP-01"))
+    src = {x["source"]: x["status"] for x in b1}
+    assert src["MOCK municipal occupancy register"] == "verified" and src["MOCK NBA accreditation"] == "verified", src
+    assert src["MOCK DigiLocker issued documents"] == "verified" and src["MOCK AICTE records"] == "verified", src
+    assert all(x["source"].startswith("MOCK") for x in b1 if x["mock"]) and any(not x["mock"] for x in b1)   # pyHanko row is real
+    b3 = board(r3, app("APP-03"))                                    # APP-03: no DigiLocker consent in its manifest
+    assert {x["status"] for x in b3 if "DigiLocker" in x["source"]} == {"consent not given"}, b3
+    assert all(set(x) >= {"document", "source", "status", "checked_at", "compared"} for x in b1 + b3)
+
+
+TESTS = {"lod": t_lod, "resubmit": t_resubmit, "checklist": t_checklist, "queue": t_queue, "trust": t_trust, "seal": t_seal, "desk_page": t_desk_page, "yoy": t_yoy, "serial": t_serial, "verify_board": t_verify_board}
 
 if __name__ == "__main__":
     want = sys.argv[1:] or list(TESTS)
