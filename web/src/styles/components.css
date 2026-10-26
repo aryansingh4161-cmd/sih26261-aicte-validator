@@ -199,3 +199,33 @@ h3.sec { font-size: 18px; margin-bottom: 10px; }
 .beforeafter figure { margin: 0; }
 .beforeafter figcaption { font-size: 12.5px; margin-bottom: 6px; }
 .beforeafter img { width: 100%; border: 1px solid var(--border); background: var(--page); display: block; }
+
+/* ---- 08 letter editor ---- */
+.letterpage { display: flex; flex-direction: column; min-height: 100%; }
+.letterbody { display: grid; grid-template-columns: 1fr 380px; flex: 1; min-height: 0; }
+.desk-area { background: var(--surface2); padding: 24px; overflow: auto; }
+.letter-paper { background: var(--page); color: #1B2A22; border: 1px solid var(--border); max-width: 640px; margin: 0 auto; padding: 40px 44px; font-size: 13.5px; line-height: 1.6; }
+.letter-paper:focus { outline: 2px solid var(--gold); outline-offset: 2px; }
+.letter-paper mark { background: var(--highlight); color: inherit; padding: 1px 4px; }
+.lp-row { display: flex; justify-content: space-between; margin-bottom: 18px; }
+.letter-paper ol { padding-inline-start: 18px; }
+.letter-paper li p { margin: 0 0 8px; }
+.letter-paper blockquote { margin: 0 0 14px; background: var(--highlight); padding: 9px 12px; color: #5D6A63; font-size: 12.5px; border-radius: 2px; }
+.incl { display: flex; gap: 12px; align-items: flex-start; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); padding: 12px 14px; margin-bottom: 10px; cursor: pointer; }
+.incl input { width: 18px; height: 18px; accent-color: var(--brand); margin-top: 2px; }
+.incl > span { display: grid; gap: 3px; }
+.incl-title { font-weight: 500; font-size: 14px; }
+.infobox { background: var(--surface2); border-radius: var(--radius); padding: 12px 14px; margin-top: 12px; font-size: 13.5px; }
+.infobox.plain { background: var(--surface); border: 1px solid var(--border); }
+.infobox b { display: flex; align-items: center; gap: 6px; font-weight: 500; }
+.infobox p { margin: 6px 0 0; color: var(--muted); font-size: 12.5px; }
+.sealresult { display: flex; flex-direction: column; align-items: flex-start; }
+.sealsteps { list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 6px; font-size: 13.5px; }
+.sealsteps li { display: flex; align-items: center; gap: 8px; }
+.sealsteps .ic svg { fill: var(--clr); }
+.sealsteps li.muted .ic svg { fill: var(--na); }
+@media print {
+  .rail, .topbar, .casehead, .sidecol, .desk-area > :not(.letter-paper) { display: none !important; }
+  .app { display: block; } .letterbody { display: block; } .desk-area { background: none; padding: 0; }
+  .letter-paper { border: 0; max-width: none; }
+}

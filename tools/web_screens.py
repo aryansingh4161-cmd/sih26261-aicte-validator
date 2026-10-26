@@ -27,6 +27,10 @@ SHOTS = [
     ("05b_preview_drawer", "/case/APP-07/sources", {}, [("click_sel", "td .btn.small"), ("wait", 1200)]),
     ("06_changes_since_2025", "/case/APP-20/changes", {}, []),
     ("07_resubmission", "/case/APP-19/resubmission", {}, []),
+    ("08_letter_editor", "/case/APP-03/letter", {}, []),
+    ("08_letter_editor_dark", "/case/APP-03/letter", {"theme": "dark"}, []),
+    ("08b_letter_sealed", "/case/APP-03/letter", {}, [("click", "Seal and issue"), ("wait", 2200)]),
+    ("09_letters_outbox", "/letters", {}, []),
 ]
 
 

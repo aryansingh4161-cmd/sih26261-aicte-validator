@@ -43,7 +43,10 @@ def letters(ctx: Ctx) -> dict:
         if a not in done and any(f.lane == "return_for_rectification" for f in r.findings):
             out.append({"kind": "Letter of Deficiency", "app_id": a, "institute": mans.get(a, {}).get("declared", {}).get("institute_name"),
                         "status": "draft", "hash": None, "date": ctx.today.isoformat(), "file": None})
+    from pramaan.seal import verify_sealed
     for x in out:
+        if x["file"]:                                        # precomputed so the static demo can show the real check result
+            x["verify"] = verify_sealed(open(os.path.join(ctx.out, "letters", x["file"]), encoding="utf-8").read(), ctx.db)
         x["kind_label"] = ctx.tr(x["kind"])
         x["status_label"] = ctx.tr({"draft": "Draft", "sealed": "Sealed, not sent", "sent": "Sent"}[x["status"]])
     out.sort(key=lambda x: (x["date"], x["app_id"]), reverse=True)

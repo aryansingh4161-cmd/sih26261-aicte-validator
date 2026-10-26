@@ -116,7 +116,8 @@ def assign(app_id: str, body: dict = Body(...)):
 
 @app.get("/api/cases/{app_id}/letter")
 def letter(app_id: str, lang: str = "en", include: list[str] | None = Query(None)):
-    return guard(C2.letter_draft, ctx(lang), app_id, include)
+    inc = [x for v in include for x in v.split(",") if x] if include else None      # include=a,b or include=a&include=b
+    return guard(C2.letter_draft, ctx(lang), app_id, inc)
 
 
 @app.post("/api/cases/{app_id}/letter/seal")

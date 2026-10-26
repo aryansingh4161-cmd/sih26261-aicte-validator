@@ -153,7 +153,16 @@ def letter_draft(ctx: Ctx, app_id: str, include: list[str] | None = None) -> dic
     pack = yaml.safe_load(open("config/rulepack_eoa_existing.yaml")).get("rules", [])
     quotes = sorted({x["aph_clause"] for x in pack if x.get("aph_clause")})
     found = sum(1 for q in quotes if _clause(q)["found"])
-    return {"app_id": app_id, "items": items, "text": lod["text"], "quotes": {"found": found, "total": len(quotes), "label": "measured"}}
+    dec = m.get("declared", {})
+    header = {"file_no": f"AICTE/RB/{reg}/{r.academic_year}/{app_id}", "date": ctx.today.strftime("%d %b %Y"), "institute": dec.get("institute_name"),
+              "address": dec.get("address"), "permanent_id": m.get("permanent_id"), "academic_year": r.academic_year,
+              "region": dec.get("region"), "subject": ctx.tr(f"Letter of Deficiency for Extension of Approval {r.academic_year}")}
+    defs = [{**x, "clause_check": _clause(x["clause"])} for x in lod["deficiencies"]]
+    return {"app_id": app_id, "items": items, "text": lod["text"], "header": header, "deficiencies": defs,
+            "closing": ctx.tr("You are requested to upload the rectified documents on the AICTE portal within the time given on the portal. "
+                              "You may appeal within 7 days of this letter being uploaded."),
+            "signature": [ctx.tr("Regulation Bureau"), ctx.tr(f"{dec.get('region', '')} Regional Office, AICTE").strip()],
+            "quotes": {"found": found, "total": len(quotes), "label": "measured"}}
 
 
 def _clause(text: str | None) -> dict:

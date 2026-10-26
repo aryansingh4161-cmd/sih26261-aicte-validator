@@ -31,3 +31,10 @@ export type Resubmission = { available: boolean; note?: string; previous?: strin
 export type Note = { note_id?: number; ts: string; author: string; text: string; mentions?: string[] };
 export type LetterDraft = { app_id: string; text: string; items: { finding_id: string; rule_id: string; title: string; lane: string; include: boolean;
   clause: string | null; clause_check: { found: boolean; page: number | null } }[]; quotes: { found: number; total: number; label: string } };
+export type LetterFull = LetterDraft & { header: { file_no: string; date: string; institute: string; address: string; permanent_id: string;
+  academic_year: string; region: string; subject: string }; deficiencies: { n: number; rule_id: string; what: string; reason: string; document: string;
+  clause: string | null; to_submit: string; finding_id: string; clause_check: { found: boolean; page: number | null } }[];
+  closing: string; signature: string[] };
+export type LetterRow = { kind: string; kind_label: string; app_id: string; institute: string; status: string; status_label: string;
+  hash: string | null; date: string; file: string | null; verify?: string };
+export type OutboxRow = { id: string; kind: string; channel: string; to: string; subject: string; body: string; created_at: string };

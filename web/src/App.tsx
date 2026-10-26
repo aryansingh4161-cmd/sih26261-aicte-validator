@@ -5,6 +5,7 @@ import { Placeholder } from "./pages/Placeholder";
 import { Home } from "./pages/Home";
 import { States } from "./pages/States";
 import { CasePage } from "./pages/Case";
+import { Letters } from "./pages/Letters";
 
 // Hash routes so the static demo works on GitHub Pages without server rewrites.
 export function App() {
@@ -18,7 +19,7 @@ export function App() {
           <Route path="/states" element={<States />} />
           <Route path="/case/:id/*" element={<CasePage />} />
           <Route path="/calendar" element={<Placeholder name="Calendar" />} />
-          <Route path="/letters" element={<Placeholder name="Letters" />} />
+          <Route path="/letters" element={<Letters />} />
           <Route path="/appeals" element={<Placeholder name="Appeals" />} />
           <Route path="/analytics" element={<Placeholder name="Analytics" />} />
           <Route path="/search" element={<Placeholder name="Search" />} />

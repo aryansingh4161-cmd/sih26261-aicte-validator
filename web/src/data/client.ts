@@ -40,6 +40,7 @@ export class HttpError extends Error {
 }
 
 export async function getJSON<T>(path: string, opts: { lang: string; role: string; params?: Record<string, string | undefined> }): Promise<T> {
+  if (opts.params?.lang) opts = { ...opts, lang: opts.params.lang };          // a view may ask for its own language (letters)
   if (mode === "demo") {
     const r = await fetch(snapPath(path, opts.lang, opts.role));
     if (!r.ok) throw new HttpError(r.status, `not in the demo snapshot: ${path}`);
