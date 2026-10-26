@@ -62,6 +62,9 @@ def main():
     cut = (lambda r: r[:a.n_max]) if a.n_max else (lambda r: r)
     val = score_all(cut(man["val"]), a.data, preds, False)
     thr = {n: val_threshold(v["y"], v["s"]) for n, v in val.items()}
+    for n, v in val.items():                                 # what each threshold means on validation itself
+        fp = sum(1 for t_, s_ in zip(v["y"], v["s"]) if t_ == 0 and s_ >= thr[n]); tp = sum(1 for t_, s_ in zip(v["y"], v["s"]) if t_ == 1 and s_ >= thr[n])
+        print(f"val {n:9s} threshold {thr[n]:.4f}: FPR {fp}/{v['y'].count(0)}, TPR {tp}/{v['y'].count(1)}", flush=True)
     res, auc = [], {}
     note = lambda n: f"{n}; threshold {thr[n]:.4f} tuned on val (FPR<=5%, n={len(val[n]['y'])}); measured on this test set; 95% CI bootstrap"
     for sp in a.sets.split(","):
@@ -86,12 +89,12 @@ def main():
                          value=f"{fa}/{clean}")]
             print(f"{sp:22s} {n:9s} AUC {au:.3f} [{lo:.3f},{hi:.3f}] pixF1 {px['f1']:.3f} caught {caught}/{edits} false {fa}/{clean}")
         print(f"  ({time.time() - t0:.0f} s so far)", flush=True)
-    new = not os.path.exists(a.out)
-    with open(a.out, "a", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=RESULT_COLS)
-        if new:
-            w.writeheader()
-        w.writerows(res)
+        new = not os.path.exists(a.out)                      # saved after every set: a long CPU run keeps what it finished
+        with open(a.out, "a", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=RESULT_COLS)
+            if new:
+                w.writeheader()
+            w.writerows([x for x in res if x["set"] == sp])
     print("val thresholds (tuned on val, FPR<=5%):", {k: round(v, 4) for k, v in thr.items()})
     sets = sorted({sp for _, sp in auc})
     if "test_ood_layout" in sets:

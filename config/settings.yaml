@@ -6,6 +6,8 @@ tamper_threshold: 0.136        # image score; chosen on VALIDATION for FPR ~5%: 
 tamper_mode: single              # WK22: single (model 1) | ensemble (mean of model 1 + model 2 heatmaps). Ensemble stays OFF until
 tamper_weights_2: data/models/model2_tamper_unet.pt   # tools/ensemble_eval.py shows it beats model 1 on ood_layout and loses <= 0.02 AUC
 tamper_threshold_ensemble: null  # elsewhere; its threshold is then chosen on VALIDATION at the same 5% false-alarm target (designed)
+# WK22-B DECISION (measured, eval/results_ensemble.csv, seed-7 sets n=300): KEEP model 1. Ensemble val threshold 0.0952
+# (FPR 7/139); it beat model 1 on ood_layout (AUC 0.651 vs 0.625) but fell 0.032 below on classical_inpaint (0.472 vs 0.504).
 name_match_threshold: 0.85     # name similarity below this = mismatch
 photo_max_km: 1.0              # photo GPS farther than this from declared location = flag
 blur_threshold: 60.0           # variance of Laplacian below this = blurry (tune on demo photos)

@@ -29,6 +29,6 @@ Status: built = code + test; mocked = works against a MOCK source; designed = sp
 | Item | Status | Evidence / reason |
 |---|---|---|
 | OCR clean-up + fuzzy labels (Part A) | built | 50 synthetic scans (never tuned on): field accuracy 0.686 -> 0.771 (measured); fire certificates 0.92 -> 0.86 (worse); 2 real scans unchanged (n=2, real, not tuned on). Commit 6a0537f |
-| Model 1 + model 2 ensemble (Part B) | blocked: model2_tamper_unet.pt not next to tamper_unet.pt yet | code ready: tamper_model mode single/ensemble, tools/ensemble_eval.py; settings tamper_mode: single |
+| Model 1 + model 2 ensemble (Part B) | built, OFF (decision rule: keep model 1) | eval/results_ensemble.csv (measured, seed-7, n=300 per set; thresholds tuned on val only): ensemble AUC test_id 0.990 (m1 0.986), ood_layout 0.651 (0.625), ood_tamper 0.719 (0.725), ood_both 0.575 (0.564), classical_inpaint 0.472 (0.504, -0.032 > 0.02) -> keep model 1; test_ai_inpaint not run (needs a GPU / Stable Diffusion) |
 | Real EoA institute_name fix (Part C step 1) | built | grid cell right of "Name of the Institution": full wrapped name on 6/6 dev letters; & = AND in the scorer |
 | Real EoA dev score + held-out test (Part C step 2) | blocked: answer key (codes.csv, eoa_truth.csv) and real_samples/eoa_test/ (EOA7+) not on this Mac | run once: python -m eval.extraction_real --set real_eoa_test --codes 7-99 |

@@ -245,3 +245,11 @@
 - run_eval (measured, synthetic): before WK23 (WK21, 18 apps): field 0.9977 (n=2220), recall 1.0 (n=30), 0 unexpected, lanes 18/18, 0.70 s/app. After (23 apps): field 0.9977 (n=2220), type 1.0 (n=420), recall 1.0 (n=35), 0 unexpected, lanes 23/23, 0.63 s/app.
 - Translation timing (measured, Desk page, Hindi): cold 36.1 s, warm 1.02 s, English 0.68 s. Quality not human-reviewed.
 - Blocked: WK22 Part B (model 2 missing), Part C held-out test (EOA7+ letters + answer key missing).
+
+## WK22 Part B - model 1 + model 2 ensemble (done; decision: KEEP model 1)
+- Data (local, git-ignored): seed-7 val 300 (139 clean / 161 edited, same as WK15) + test_id, ood_layout, ood_tamper, ood_both (make_dataset) and classical_inpaint (ai_inpaint --method classical), 300 each. test_ai_inpaint NOT run: needs Stable Diffusion on a GPU. CPU: 4.3 s/image for both models, ~2 h 10 min.
+- Thresholds (tuned on VALIDATION only, 95th percentile of clean scores = FPR 5%): model 1 0.1356 (reproduces settings 0.136, FPR 7/139, TPR 158/161); model 2 ~0.000 (>=95% of its clean scores are exactly 0: fragile); ensemble 0.0952 (FPR 7/139, TPR 161/161).
+- Test AUC [95% CI], measured, model 1 / model 2 / ensemble: test_id 0.986 / 0.987 / 0.990; ood_layout 0.625 / 0.624 / 0.651; ood_tamper 0.725 / 0.718 / 0.719; ood_both 0.564 / 0.583 / 0.575; classical_inpaint 0.504 / 0.435 / 0.472. Full rows incl. pixel F1 and caught / false alarms: eval/results_ensemble.csv.
+- Decision rule: beats model 1 on ood_layout = yes (+0.026, CIs overlap); no set more than 0.02 below = NO (classical_inpaint -0.032) -> KEEP model 1, ensemble stays an option (tamper_mode: single). Demo re-run: recall 1.0 (n=35), 0 unexpected, lanes 23/23.
+- "Any layer" = model only on these pages: font-mix and PDF-revision checks read PDFs, these test pages are images (designed limitation). False alarms at the val threshold on unseen layouts are high for every model (model 1 flags 120/168 clean ood_layout pages).
+- Note: eval/results_model_kaggle.csv says its U-Net threshold on val was 0.000 (model 2 behaviour) and lists ood_layout AUC 0.7585 vs 0.625 here; the Kaggle numbers likely come from other weights/data, so do not mix the two tables on the deck.
