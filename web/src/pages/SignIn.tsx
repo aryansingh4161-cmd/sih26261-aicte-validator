@@ -21,7 +21,7 @@ export function SignIn() {
     <div className="signin">
       <section className="signin-left">
         <div className="signin-block">
-          <div className="brand"><GearMark size={44} /><div><div className="wordmark" style={{ fontSize: 22, margin: 0 }}>Pramaan <b>AI</b></div>
+          <div className="brand"><GearMark size={44} /><div><div className="wordmark" role="img" aria-label="Pramaan AI" style={{ fontSize: 22, margin: 0 }}>Pramaan <b>AI</b></div>
             <div className="tagline">{t("Document verification")}</div></div></div>
           <h1 style={{ fontSize: 34, marginTop: 36 }}>{t("Welcome back.")}<span className="line2">{t("Sign in to start checking.")}</span></h1>
           <p className="muted" style={{ fontSize: 15, lineHeight: 1.55, margin: "20px 0 24px" }}>

@@ -146,7 +146,9 @@ def letter_draft(ctx: Ctx, app_id: str, include: list[str] | None = None) -> dic
               "include": (f.finding_id in include) if include is not None else f.lane == "return_for_rectification",
               "clause": f.aph_clause, "clause_check": _clause(f.aph_clause)} for f in r.findings if f.lane in ("return_for_rectification", "human_review")]
     keep = {i["finding_id"] for i in items if i["include"]}
-    sub = r.model_copy(update={"findings": [f for f in r.findings if f.finding_id in keep]})
+    # the officer decides: a Human review item the officer includes goes into the letter as a deficiency
+    sub = r.model_copy(update={"findings": [f.model_copy(update={"lane": "return_for_rectification"}) if f.lane == "human_review" else f
+                                            for f in r.findings if f.finding_id in keep]})
     reg = (m.get("declared", {}).get("region") or "XX").replace("-", "")[:2].upper()
     lod = build_lod(sub, institute=m.get("declared", {}).get("institute_name", ""), permanent_id=m.get("permanent_id", ""),
                     file_no=f"AICTE/RB/{reg}/{r.academic_year}/{app_id}", today=ctx.today, lang=ctx.lang)

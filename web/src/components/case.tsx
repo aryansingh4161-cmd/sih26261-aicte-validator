@@ -22,7 +22,7 @@ export function DocViewer({ src, boxes, heat, showHeat, height = 440 }: { src?: 
     );
   }
   return (
-    <div className="viewer" style={{ maxHeight: height }}>
+    <div className="viewer" style={{ maxHeight: height }} tabIndex={0} role="region" aria-label={t("Document page, scroll to read")}>
       <div className="paper">
         <img src={assetUrl(src)} alt={t("Document page")} onError={() => setBroken(true)} />
         {showHeat && heat && <img className="heat" src={assetUrl(heat)} alt={t("Tamper heatmap")} />}

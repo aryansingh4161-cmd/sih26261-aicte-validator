@@ -126,7 +126,7 @@ export function Shell({ children }: { children: ReactNode }) {
         ))}
       </nav>
       <header className="topbar">
-        <span className="wordmark">Pramaan <b>AI</b></span>
+        <span className="wordmark" role="img" aria-label="Pramaan AI">Pramaan <b>AI</b></span>
         <form className="search" role="search" onSubmit={(e) => { e.preventDefault(); nav(`/search?q=${encodeURIComponent(q)}`); }}>
           <Icon name="search" className="icon" />
           <input ref={input} value={q} onChange={(e) => setQ(e.target.value)} aria-label={t("Search")}

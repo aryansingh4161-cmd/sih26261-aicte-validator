@@ -49,7 +49,7 @@ export function Evc() {
           {done && <div className="okbox" style={{ marginTop: 16 }}><GearMark size={28} spin /><div><b>{t("Visit report submitted.")}</b><div style={{ fontSize: 12.5 }}>{done}</div></div></div>}
         </div>
         <aside>
-          <div className="mapbox" aria-label={t("Map check")}>
+          <div className="mapbox" role="img" aria-label={t("Map check: the declared campus and the address (demo adapter)")}>
             <svg viewBox="0 0 360 240" width="100%" aria-hidden="true">
               <rect width="360" height="240" fill="var(--surface2)" />
               {[60, 150, 260].map((x) => <rect key={x} x={x} y="0" width="10" height="240" fill="var(--surface)" />)}

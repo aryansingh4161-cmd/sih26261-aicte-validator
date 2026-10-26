@@ -16,8 +16,11 @@ export function LetterEditor({ c }: { c: Case }) {
   const { t, lang } = useSettings();
   const nav = useNavigate();
   const [letterLang, setLetterLang] = useState(lang);
-  const v = useView<LetterFull>(`cases/${c.app_id}/letter`, { lang: letterLang });
   const [exclude, setExclude] = useState<string[]>([]);
+  const [extra, setExtra] = useState<string[]>([]);                 // Human review items the officer adds (live: the server redrafts)
+  const base = useView<LetterFull>(`cases/${c.app_id}/letter`, { lang: letterLang });
+  const defaults = (base.data?.items || []).filter((i) => i.include).map((i) => i.finding_id);
+  const v = useView<LetterFull>(`cases/${c.app_id}/letter`, extra.length ? { lang: letterLang, include: [...defaults, ...extra].join(",") } : { lang: letterLang });
   const paper = useRef<HTMLDivElement>(null);
   const act = useActions();
   const [sealed, setSealed] = useState<{ hash: string; seal: string; demo: boolean; file?: string } | null>(null);
@@ -79,15 +82,17 @@ export function LetterEditor({ c }: { c: Case }) {
                 const on = i.include && !exclude.includes(i.finding_id);
                 return (
                   <label key={i.finding_id} className="incl">
-                    <input type="checkbox" checked={on} disabled={!i.include && i.lane === "human_review"}
-                      onChange={() => setExclude(on ? [...exclude, i.finding_id] : exclude.filter((x) => x !== i.finding_id))} />
-                    <span><span className="incl-title">{i.title}{i.lane === "human_review" && ` (${t("to check, not in letter")})`}</span>
+                    <input type="checkbox" checked={on} disabled={i.lane === "human_review" && currentMode() !== "live"}
+                      onChange={() => i.lane === "human_review"
+                        ? setExtra(extra.includes(i.finding_id) ? extra.filter((x) => x !== i.finding_id) : [...extra, i.finding_id])
+                        : setExclude(on ? [...exclude, i.finding_id] : exclude.filter((x) => x !== i.finding_id))} />
+                    <span><span className="incl-title">{i.title}{i.lane === "human_review" && !on && ` (${t("to check, not in letter")})`}</span>
                       <span className="mono muted" style={{ fontSize: 11.5 }}>{i.rule_id}</span></span>
                   </label>
                 );
               })}
               {v.data && <div className="infobox"><b>{t("Handbook quotes")}</b>
-                <p>{t("Every quote is matched word for word against the Handbook before it can go in a letter.")} {v.data.quotes.found} {t("of")} {v.data.quotes.total} {t("quotes in the rule pack match")} ({t("measured")}).</p></div>}
+                <p>{t("Every quote is matched word for word against the Handbook before it can go in a letter.")} {v.data.quotes.found} {t("of")} {v.data.quotes.total} {t("Handbook quotes used in the checks match")} ({t("measured")}).</p></div>}
               <div className="infobox plain"><b><Icon name="verified_user" style={{ color: "var(--brand)" }} /> {t("What \"Seal and issue\" does")}</b>
                 <p>{t("Adds a hash and a QR code, saves the letter to the outbox, writes an audit block, and starts the 7-day appeal window. A sealed letter cannot be edited.")}</p></div>
             </>

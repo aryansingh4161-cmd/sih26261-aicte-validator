@@ -22,7 +22,8 @@ EXTRA = ["Send to human review", "Return for rectification", "No issues found", 
 
 def strings() -> list[str]:
     found = set(EXTRA)
-    for p in glob.glob("dashboard/*.py") + glob.glob("dashboard/pages/*.py") + glob.glob("pramaan/*.py"):
+    for p in (glob.glob("dashboard/*.py") + glob.glob("dashboard/pages/*.py") + glob.glob("pramaan/*.py") + glob.glob("api/*.py")
+              + glob.glob("web/src/**/*.tsx", recursive=True) + glob.glob("web/src/**/*.ts", recursive=True)):    # WK26: web UI strings too
         src = open(p, encoding="utf-8").read()
         found |= set(re.findall(r'(?<![fA-Za-z_])t\("((?:[^"\\\n]|\\.)+)"', src))
         found |= set(re.findall(r"(?<![fA-Za-z_])t\('((?:[^'\\\n]|\\.)+)'", src))

@@ -53,7 +53,7 @@ export function SiteFooter() {
   const { t } = useSettings();
   return (
     <footer className="sitefoot">
-      <span><span className="wordmark" style={{ fontSize: 15, margin: 0 }}>Pramaan <b>AI</b></span> <span className="muted">{t("Document verification for the AICTE portal")}</span></span>
+      <span><span className="wordmark" role="img" aria-label="Pramaan AI" style={{ fontSize: 15, margin: 0 }}>Pramaan <b>AI</b></span> <span className="muted">{t("Document verification for the AICTE portal")}</span></span>
       <nav aria-label={t("Site")}>{DOCS.map(([k, l]) => <a key={k} href={`#/${k}`}>{t(l)}</a>)}<a href="#/privacy">{t("Help")}</a></nav>
     </footer>
   );
