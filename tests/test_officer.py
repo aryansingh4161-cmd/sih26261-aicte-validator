@@ -255,7 +255,25 @@ def t_assign():
     assert assign(rs, mans, [u for u in users if u["id"] != "officer.central"])[next(x for x in a if mans[x]["declared"]["region"] == "Central")] == "unassigned"
 
 
-TESTS = {"lod": t_lod, "resubmit": t_resubmit, "checklist": t_checklist, "queue": t_queue, "trust": t_trust, "seal": t_seal, "desk_page": t_desk_page, "yoy": t_yoy, "serial": t_serial, "verify_board": t_verify_board, "expiry": t_expiry, "feedback": t_feedback, "assign": t_assign}
+def t_export_case():
+    import hashlib, json, zipfile
+    from pramaan.export_case import export_case
+    from pramaan.seal import verify_sealed
+    results("APP-06")
+    zp = export_case("APP-06", TMP, DB, zip_path=os.path.join(TMP, "APP-06_case.zip"))
+    with zipfile.ZipFile(zp) as z:
+        names = set(z.namelist())
+        assert {"manifest.json", "hashes.json", "result.json", "letter_of_deficiency.txt", "decisions.json", "audit_slice.json",
+                "VERIFY.txt", "report.html"} <= names, names
+        hashes = json.loads(z.read("hashes.json"))
+        inside = {n.split("/", 1)[1]: hashlib.sha256(z.read(n)).hexdigest() for n in names if n.startswith("documents/")}
+        assert inside and all(inside[h["file"]] == h["sha256"] for h in hashes.values() if h["file"] in inside), "hashes match"
+        assert any(n.startswith("evidence/") and n.endswith(".png") for n in names)
+        assert verify_sealed(z.read("report.html").decode(), DB).startswith("VALID")
+        assert all(r["app_id"] == "APP-06" for r in json.loads(z.read("audit_slice.json")))
+
+
+TESTS = {"lod": t_lod, "resubmit": t_resubmit, "checklist": t_checklist, "queue": t_queue, "trust": t_trust, "seal": t_seal, "desk_page": t_desk_page, "yoy": t_yoy, "serial": t_serial, "verify_board": t_verify_board, "expiry": t_expiry, "feedback": t_feedback, "assign": t_assign, "export_case": t_export_case}
 
 if __name__ == "__main__":
     want = sys.argv[1:] or list(TESTS)
