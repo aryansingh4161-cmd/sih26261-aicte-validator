@@ -1,0 +1,15 @@
+# WK25-24 coverage of the rules sheet (R01-R59) by the rule pack + engine checks.
+# PARTIAL: only the rows this repository can tie to a rule id are listed. The team's rule_coverage sheet (reported as
+# "11 of 59 + occupancy") is not in the repo yet: replace this file with its export (same keys) to get the official count.
+source: "rows mapped from the rule pack's own clause references (WK25); team sheet export pending"
+total_rows: 59
+engine_checks: [X-GEO]          # checks outside the rule pack that cover a sheet row
+rows:
+  - {row: R01, ref: "ANNEXURE-2 2.1 i.", rule_ids: [R-MISS-affidavit_2, R-FLD-affidavit_2-stamp_value, R-SIG-affidavit_2]}
+  - {row: R02, ref: "ANNEXURE-2 2.1 ii.", rule_ids: [R-REC-ter_paid]}
+  - {row: R03, ref: "ANNEXURE-2 2.1 iii.", rule_ids: [R-MISS-occupancy_cert]}
+  - {row: R04, ref: "ANNEXURE-2 2.1 iv.", rule_ids: [R-MISS-structural_cert]}
+  - {row: R05, ref: "ANNEXURE-2 2.1 v.", rule_ids: [R-MISS-fire_cert, R-EXP-fire_cert]}
+  - {row: R06, ref: "ANNEXURE-2 2.1 vi.", rule_ids: [X-GEO]}
+  - {row: R54, ref: "6.17 h.", rule_ids: [R-EXP-structural_cert]}
+  - {row: R59, ref: "ANNEXURE-3 3.1 c.", rule_ids: [R-PROV-occupancy_cert]}

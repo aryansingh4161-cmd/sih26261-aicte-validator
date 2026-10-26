@@ -267,3 +267,6 @@ eval/extraction_real_detail*.csv
 IndicTrans2/
 data/outbox/
 output/i18n_cache.db
+
+# WK25: local copy of the public AICTE Approval Process Handbook (rule_admin.check_clause); not committed
+data/handbook/

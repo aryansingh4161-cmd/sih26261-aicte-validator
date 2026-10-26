@@ -54,7 +54,7 @@ def _doc(dt, **fields):
 
 
 def t_rules(m):
-    rp = "config/rulepack_eoa_existing.yaml"
+    rp = os.environ.get("PRAMAAN_RULEPACK", "config/rulepack_eoa_existing.yaml")   # WK25: rule_admin tests a temp copy
     f = m.run_rules(APP, [], [], None, rp, TODAY)
     assert any(x.rule_id == "R-MISS-fire_cert" for x in f)
     f = m.run_rules(APP, [_doc("fire_cert", valid_until="2026-01-01")], [], None, rp, TODAY)

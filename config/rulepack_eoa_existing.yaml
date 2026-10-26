@@ -2,6 +2,7 @@
 # clause_verified: true ONLY for rows a human marked "ok" in the rules sheet (R01-R10, checked Sat 24 Oct).
 # R53/R54 are quoted from the sheet but NOT yet human-checked -> false. Rules with aph_clause null are our own
 # design checks (no Handbook clause claimed).
+version: 1                    # WK25: bumped by pramaan/rule_admin.py apply
 rules:
   - id: R-MISS-affidavit_2
     type: required_doc

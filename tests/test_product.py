@@ -84,7 +84,38 @@ def t_notes():
         assert b"principal" in z.read("notes.json")
 
 
-TESTS = {"case_timeline": t_case_timeline, "search": t_search, "notes": t_notes}
+def t_rule_admin():
+    import shutil
+    from pramaan.audit import AuditLog
+    from pramaan.rule_admin import apply_edit, check_clause, coverage, propose_edit
+    real = check_clause("ANNEXURE-3 3.1 c. - In case of partial/ provisional Occupancy Certificate issued by the State Government "
+                        "authority, the same shall be considered only for 2 consecutive Academic Years.")
+    assert real["found"] and real["page"] == 102, real
+    fake = check_clause("Every institute shall plant forty-two mango trees before the Expert Visit Committee arrives.")
+    assert not fake["found"]
+    rp = os.path.join(TMP, "rulepack_copy.yaml"); shutil.copy("config/rulepack_eoa_existing.yaml", rp)
+    before = open(rp, "rb").read()
+    new = {"id": "R-MISS-noc_format2", "type": "required_doc", "applies_to": ["eoa_existing_regular"], "params": {"doc_type": "noc_format2"},
+           "severity": "high", "lane": "return_for_rectification", "title": "University NOC missing",
+           "message": "A No Objection Certificate from the affiliating University is required.",
+           "aph_clause": "Every institute shall plant forty-two mango trees before the Expert Visit Committee arrives.", "clause_verified": True}
+    p = propose_edit(new, rp)
+    assert p["ok"] and p["rule"]["clause_verified"] is False and p["warnings"], p                 # made-up quote: not verified + warning
+    bad = dict(new, type="magic_rule", title="Application rejected")
+    pb = propose_edit(bad, rp)
+    assert not pb["ok"] and any("unsupported rule type" in e for e in pb["errors"]) and any("never says" in e for e in pb["errors"])
+    assert not apply_edit(bad, {"id": "admin.demo", "role": "admin"}, rp, DB)["applied"] and open(rp, "rb").read() == before
+    out = apply_edit(new, {"id": "admin.demo", "role": "admin"}, rp, DB)
+    assert out["applied"] and out["version"] == 2 and "version: 2" in open(rp).read() and "R-MISS-noc_format2" in open(rp).read()
+    assert "# Rule pack v0" in open(rp).read()                                                     # comments kept
+    with AuditLog(DB) as log:
+        row = [r for r in log.rows() if r["action"] == "rule pack edited"][-1]
+    assert row["hash"] == out["audit_hash"] and "R-MISS-noc_format2" in row["detail"]
+    cov = coverage(rulepack=rp)
+    assert cov["total"] == 59 and cov["covered"] == 8, cov
+
+
+TESTS = {"case_timeline": t_case_timeline, "search": t_search, "notes": t_notes, "rule_admin": t_rule_admin}
 
 if __name__ == "__main__":
     want = sys.argv[1:] or list(TESTS)

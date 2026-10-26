@@ -33,3 +33,5 @@ reminder_days: [60, 30, 7]
 assignment_sla_days: {human_review: 5, return_for_rectification: 3, clear: 2, info: 7}
 # WK23-18 geo check: declared location vs MOCK geocoder of the declared address (ASSUMPTION threshold)
 geo_max_km: 2.0
+# WK25-24 rule administration: local copy of the Approval Process Handbook used for word-for-word clause checks (not committed)
+handbook_pdf: data/handbook/APH.pdf
