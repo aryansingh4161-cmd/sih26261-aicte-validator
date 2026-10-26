@@ -45,7 +45,20 @@ def t_lod():
     assert row["hash"] == h and "Edited by officer." in row["detail"], row
 
 
-TESTS = {"lod": t_lod}
+def t_resubmit():
+    from pramaan.resubmit import compare
+    r2, r19 = results("APP-02", "APP-19")
+    d = compare(r2, r19)
+    assert d["summary"] == "1 of 1 deficiencies resolved; 0 still open; 1 new", d["summary"]
+    assert {x["rule_id"]: x["status"] for x in d["deficiencies"]} == {"R-MISS-fire_cert": "resolved", "R-FLD-affidavit_2-stamp_value": "new"}
+    st = {x["slot"]: x["status"] for x in d["documents"]}
+    assert st["fire_cert"] == "added" and st["affidavit_2"] == "replaced", st
+    assert all(x["status"] != "unchanged" for x in d["changed_documents"])
+    assert compare(r19, r19)["summary"] == "0 of 1 deficiencies resolved; 1 still open; 0 new"      # still-open path
+    assert compare(None, r19)["summary"] == "0 of 0 deficiencies resolved; 0 still open; 1 new"     # review focus 2
+
+
+TESTS = {"lod": t_lod, "resubmit": t_resubmit}
 
 if __name__ == "__main__":
     want = sys.argv[1:] or list(TESTS)
