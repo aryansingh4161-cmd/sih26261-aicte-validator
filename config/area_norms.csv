@@ -1,0 +1,18 @@
+room_type,min_rooms_rule_as_printed,min_rooms_number,min_area_per_room_sqm,programme,clause_as_printed,page,checked
+class_room,Total Number of Divisions per year x Total Duration of course in years x 0.5,2,66,Engineering and Technology,"3.2.1 Instructional Area, A",87,ok
+class_room_div30,Total Number of Divisions per year x Total Duration of course in years x 0.5,,33,Engineering and Technology,"3.2.1 Instructional Area, A",87,ok
+tutorial_room,25% of total Class Room,,33,Engineering and Technology,"3.2.1 Instructional Area, A",87,ok
+laboratory_first_year,4 (which includes 2 Laboratories for Basic sciences) : Up to an intake of 600,4,66,Engineering and Technology,"3.2.1 Instructional Area, A",87,ok
+laboratory_other_than_first_year,2 per Course per Year up to an intake of 180 per course,,66,Engineering and Technology,"3.2.1 Instructional Area, A",87,ok
+laboratory_post_graduate,1per Course,,66,Engineering and Technology,"3.2.1 Instructional Area, A",87,ok
+research_laboratory,1,,66,Engineering and Technology,"3.2.1 Instructional Area, A",87,ok
+workshop,1 (Up to an intake of 600) +1 for an intake of 601-1200,1,200,Engineering and Technology,"3.2.1 Instructional Area, A",87,ok
+additional_lab_workshop_x_ug,1,,200,Engineering and Technology,"3.2.1 Instructional Area, A",87,ok
+additional_lab_workshop_x_diploma,1,,150,Engineering and Technology,"3.2.1 Instructional Area, A",87,ok
+cad_centre_drawing_hall,1(Up to an intake of 600) +1 for an intake of 601-1200,1,132,Engineering and Technology,"3.2.1 Instructional Area, A",87,ok
+computer_centre,1(Up to an intake of 600) +1 for an intake of 601-1200,1,150,Engineering and Technology,"3.2.1 Instructional Area, A",88,ok
+seminar_hall,1,1,132,Engineering and Technology,"3.2.1 Instructional Area, A",88,ok
+library,1,1,400,Engineering and Technology,"3.2.1 Instructional Area, A",88,ok
+language_laboratory,1,1,33,Engineering and Technology,"3.2.1 Instructional Area, A",88,ok
+administrative_area_total,An institution should possess a total administrative area of minimum 750 sq. m. for an approved intake up to 300.,,750,all programmes,3.3 Administrative Area (Carpet Area) in m2,90,ok
+amenities_area_total,An institution should possess a total amenities area of minimum 500 sq. m. for an approved intake up to 300.,,500,all programmes,3.4 Amenities Area (Carpet Area) in m2,90,ok

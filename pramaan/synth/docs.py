@@ -332,7 +332,8 @@ def area_rows(inst: Dict, norms_path: str = "config/area_norms.yaml") -> List[Di
         cnt = int(n.get("min_rooms_number") or rng.randint(3, 6)) + rng.randint(0, 3)
         per = float(n.get("min_area_per_room_sqm") or 30) * rng.uniform(1.05, 1.35)
         out.append({"room_type": n["room_type"].replace("_", " ").title(), "count": cnt, "area_sqm": round(cnt * per)})
-    out.append({"room_type": "Library", "count": 1, "area_sqm": rng.randint(300, 500)})
+    if not any(n.get("room_type") == "library" for n in _NORMS):     # the real norms include a library row (400 sq m)
+        out.append({"room_type": "Library", "count": 1, "area_sqm": rng.randint(300, 500)})
     return out
 
 

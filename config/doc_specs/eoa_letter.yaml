@@ -2,7 +2,7 @@ doc_type: eoa_letter
 match_any: ["Extension of Approval", "EOA"]
 fields:
   file_no:        {patterns: ['F\.?\s?No\.?\s*:?\s*(\S+/\S+)'], type: text}
-  approval_date:  {patterns: ['Date of Approval\s*:?\s*(\d{1,2}[-/ ][A-Za-z0-9]{2,9}[-/ ]\d{4})'], type: date}
+  approval_date:  {patterns: ['(?:Date of Approval|Date)\s*:?\s*(\d{1,2}[-/ ][A-Za-z0-9]{2,9}[-/ ]\d{4})'], type: date}
   permanent_id:   {patterns: ['Permanent Id\s*:?\s*(1-\d+)'], type: text}
   application_id: {patterns: ['Application Id\s*:?\s*(1-\d+)'], type: text}
   institute_name: {labels: ['Name of the Institution'], patterns: ['Name of the Institution\s*:\s*(.+)'], type: text}

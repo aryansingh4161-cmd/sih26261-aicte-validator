@@ -21,20 +21,35 @@ def _ev(doc, field, extra=""):
 
 
 def _f(app, rid, title, reason, sev, evs, doc_id=None, conf=0.9):
-    return Finding(finding_id=f"{app.app_id}-{rid}-{doc_id or 'APP'}", app_id=app.app_id, doc_id=doc_id, source="crosscheck",
-                   rule_id=rid, title=title, reason=reason[:400], severity=sev, confidence=conf, lane="human_review",
-                   evidence=evs)
+    return Finding(
+        finding_id=f"{app.app_id}-{rid}-{doc_id or 'APP'}",
+        app_id=app.app_id,
+        doc_id=doc_id,
+        source="crosscheck",
+        rule_id=rid,
+        title=title,
+        reason=reason[:400],
+        severity=sev,
+        confidence=conf,
+        lane="human_review",
+        evidence=evs,
+    )
 
 
 def _tok(s):
-    return set(re.findall(r"[A-Z]{3,}", (s or "").upper())) - {"AND", "THE", "FOR", "UNDER", "POST", "GRADUATE", "DEMO", "EXAMPLE", "STATE", "TECHNICAL", "UNIVERSITY"}
+    return set(re.findall(r"[A-Z]{3,}", (s or "").upper())) - {
+        "AND", "THE", "FOR", "UNDER", "POST", "GRADUATE",
+        "DEMO", "EXAMPLE", "STATE", "TECHNICAL", "UNIVERSITY"
+    }
 
 
 def _match_course(c, rows, intake=None, used=None):
     """Best unused EoA row for this course; among equally good rows prefer the one with the same intake
     (the same course can appear at two levels, e.g. UG and PG)."""
-    t, used = _tok(c), used if used is not None else set()
+    t = _tok(c)
+    used = used if used is not None else set()
     cands = []
+
     for i, r in enumerate(rows):
         if i in used:
             continue
@@ -42,64 +57,225 @@ def _match_course(c, rows, intake=None, used=None):
         s = len(t & u) / max(1, len(t | u)) if t else 0.0
         if s >= 0.6:
             cands.append((s, str(r.get("intake_curr")) == str(intake), i))
+
     if not cands:
         return None
+
     s, _, i = max(cands, key=lambda x: (round(x[0], 2), x[1]))
     used.add(i)
     return rows[i]
 
 
-def run_crosscheck(app: Application, docs: list[DocumentRecord], record: dict | None, today: date) -> list[Finding]:
+def run_crosscheck(
+    app: Application,
+    docs: list[DocumentRecord],
+    record: dict | None,
+    today: date,
+) -> list[Finding]:
     out: list[Finding] = []
+
     try:
         ref = (record or {}).get("institute_name") or app.declared.get("institute_name")
+
         for d in docs:
             nm = d.fields.get("institute_name")
             if ref and nm and nm.value and similarity(nm.value, ref) < NAME_THR:
-                out.append(_f(app, "X-NAME", f"Institute name differs on {d.doc_type}",
-                              f"'{nm.value}' on this document vs '{ref}' in the application record (similarity {similarity(nm.value, ref):.2f}).",
-                              "medium", [_ev(d, "institute_name")], d.doc_id))
+                out.append(
+                    _f(
+                        app,
+                        "X-NAME",
+                        f"Institute name differs on {d.doc_type}",
+                        f"'{nm.value}' on this document vs '{ref}' in the application record "
+                        f"(similarity {similarity(nm.value, ref):.2f}).",
+                        "medium",
+                        [_ev(d, "institute_name")],
+                        d.doc_id,
+                    )
+                )
+
             for fld in DATE_FIELDS:
-                dt = parse_date(d.fields[fld].value) if fld in d.fields and d.fields[fld].value else None
+                dt = (
+                    parse_date(d.fields[fld].value)
+                    if fld in d.fields and d.fields[fld].value
+                    else None
+                )
                 if dt and dt > today:
-                    out.append(_f(app, "X-FUTURE-DATE", f"Date in the future on {d.doc_type}",
-                                  f"{fld} is {dt.isoformat()}, after today ({today.isoformat()}).", "high", [_ev(d, fld)], d.doc_id))
+                    out.append(
+                        _f(
+                            app,
+                            "X-FUTURE-DATE",
+                            f"Date in the future on {d.doc_type}",
+                            f"{fld} is {dt.isoformat()}, after today ({today.isoformat()}).",
+                            "high",
+                            [_ev(d, fld)],
+                            d.doc_id,
+                        )
+                    )
+
         eoa = next((d for d in docs if d.doc_type == "eoa_letter"), None)
+        aff = next((d for d in docs if d.doc_type == "affidavit_2"), None)
+
         if eoa:
             pid = eoa.fields.get("permanent_id")
             if pid and pid.value and pid.value != app.permanent_id:
-                out.append(_f(app, "X-PERMID", "Previous EoA letter belongs to a different Permanent Id",
-                              f"Letter shows {pid.value}; application is for {app.permanent_id}.", "high", [_ev(eoa, "permanent_id")], eoa.doc_id))
+                out.append(
+                    _f(
+                        app,
+                        "X-PERMID",
+                        "Previous EoA letter belongs to a different Permanent Id",
+                        f"Letter shows {pid.value}; application is for {app.permanent_id}.",
+                        "high",
+                        [_ev(eoa, "permanent_id")],
+                        eoa.doc_id,
+                    )
+                )
+
         fire = next((d for d in docs if d.doc_type == "fire_cert"), None)
         if fire and "issue_date" in fire.fields and "valid_until" in fire.fields:
-            a, b = parse_date(fire.fields["issue_date"].value), parse_date(fire.fields["valid_until"].value)
+            a = parse_date(fire.fields["issue_date"].value)
+            b = parse_date(fire.fields["valid_until"].value)
+
             if a and b and b <= a:
-                out.append(_f(app, "X-FIRE-DATES", "Fire certificate valid-until is before its issue date",
-                              f"Issued {a.isoformat()}, valid until {b.isoformat()}.", "high", [_ev(fire, "issue_date"), _ev(fire, "valid_until")], fire.doc_id))
-        aff = next((d for d in docs if d.doc_type == "affidavit_2"), None)
+                out.append(
+                    _f(
+                        app,
+                        "X-FIRE-DATES",
+                        "Fire certificate valid-until is before its issue date",
+                        f"Issued {a.isoformat()}, valid until {b.isoformat()}.",
+                        "high",
+                        [_ev(fire, "issue_date"), _ev(fire, "valid_until")],
+                        fire.doc_id,
+                    )
+                )
+
+        # X-APPID: flag when Affidavit 2 and the previous EoA letter
+        # contain the same application ID. A person must verify the documents.
+        if eoa and aff:
+            old_app_id = eoa.fields.get("application_id")
+            affidavit_app_id = aff.fields.get("application_id")
+
+            if (
+                old_app_id
+                and old_app_id.value
+                and affidavit_app_id
+                and affidavit_app_id.value
+                and old_app_id.value == affidavit_app_id.value
+            ):
+                finding = _f(
+                    app,
+                    "X-APPID",
+                    "Affidavit 2 may refer to the previous year's application",
+                    (
+                        f"Both documents show application id {affidavit_app_id.value}. "
+                        "Please verify that Affidavit 2 is for the current application."
+                    ),
+                    "medium",
+                    [
+                        _ev(aff, "application_id"),
+                        _ev(eoa, "application_id"),
+                    ],
+                    aff.doc_id,
+                )
+                finding.finding_id = f"{app.app_id}-X-APPID-{aff.doc_id}"
+                out.append(finding)
+
         sub = parse_date(app.submitted_on)
         if aff and sub and "sworn_date" in aff.fields:
             sw = parse_date(aff.fields["sworn_date"].value)
             if sw and sw > sub:
-                out.append(_f(app, "X-SWORN-AFTER-SUBMIT", "Affidavit sworn after the application was submitted",
-                              f"Sworn {sw.isoformat()}, submitted {sub.isoformat()}.", "medium", [_ev(aff, "sworn_date")], aff.doc_id))
+                out.append(
+                    _f(
+                        app,
+                        "X-SWORN-AFTER-SUBMIT",
+                        "Affidavit sworn after the application was submitted",
+                        f"Sworn {sw.isoformat()}, submitted {sub.isoformat()}.",
+                        "medium",
+                        [_ev(aff, "sworn_date")],
+                        aff.doc_id,
+                    )
+                )
+
         noc = next((d for d in docs if d.doc_type == "noc_format2"), None)
         if noc and eoa and noc.tables.get("programs") and eoa.tables.get("programs"):
             used: set = set()
+
             for r in noc.tables["programs"]:
-                m = _match_course(r.get("course"), eoa.tables["programs"], r.get("intake_curr"), used)
-                ev = [Evidence(doc_id=noc.doc_id, page=1, text=f"{r.get('course')} {r.get('intake_curr')}"[:200])]
+                m = _match_course(
+                    r.get("course"),
+                    eoa.tables["programs"],
+                    r.get("intake_curr"),
+                    used,
+                )
+                ev = [
+                    Evidence(
+                        doc_id=noc.doc_id,
+                        page=1,
+                        text=f"{r.get('course')} {r.get('intake_curr')}"[:200],
+                    )
+                ]
+
                 if m is None:
-                    out.append(_f(app, "X-PROG-NOT-APPROVED", "NOC lists a programme not on the previous approval",
-                                  f"'{r.get('course')}' is on the university NOC but not on last year's EoA letter.", "medium", ev, noc.doc_id, 0.7))
+                    out.append(
+                        _f(
+                            app,
+                            "X-PROG-NOT-APPROVED",
+                            "NOC lists a programme not on the previous approval",
+                            (
+                                f"'{r.get('course')}' is on the university NOC "
+                                "but not on last year's EoA letter."
+                            ),
+                            "medium",
+                            ev,
+                            noc.doc_id,
+                            0.7,
+                        )
+                    )
                     continue
-                ev.append(Evidence(doc_id=eoa.doc_id, page=1, text=f"{m.get('course')} {m.get('intake_curr')}"[:200]))
-                n_noc, n_eoa = int(r.get("intake_curr") or 0), int(m.get("intake_curr") or 0)
-                bad = n_noc != n_eoa if app.category == "eoa_existing_regular" else n_noc < n_eoa
+
+                ev.append(
+                    Evidence(
+                        doc_id=eoa.doc_id,
+                        page=1,
+                        text=f"{m.get('course')} {m.get('intake_curr')}"[:200],
+                    )
+                )
+
+                n_noc = int(r.get("intake_curr") or 0)
+                n_eoa = int(m.get("intake_curr") or 0)
+                bad = (
+                    n_noc != n_eoa
+                    if app.category == "eoa_existing_regular"
+                    else n_noc < n_eoa
+                )
+
                 if bad:
-                    out.append(_f(app, "X-INTAKE", "Intake on university NOC disagrees with approved intake",
-                                  f"{r.get('course')}: NOC says {n_noc}, previous EoA letter says {n_eoa}.", "medium", ev, noc.doc_id))
+                    out.append(
+                        _f(
+                            app,
+                            "X-INTAKE",
+                            "Intake on university NOC disagrees with approved intake",
+                            (
+                                f"{r.get('course')}: NOC says {n_noc}, "
+                                f"previous EoA letter says {n_eoa}."
+                            ),
+                            "medium",
+                            ev,
+                            noc.doc_id,
+                        )
+                    )
+
     except Exception as e:
-        out.append(Finding(finding_id=f"{app.app_id}-X-ERROR-APP", app_id=app.app_id, source="crosscheck", rule_id="X-ERROR",
-                           title="Cross-check could not finish", reason=f"{type(e).__name__}: {str(e)[:150]}", severity="low", lane="info"))
+        out.append(
+            Finding(
+                finding_id=f"{app.app_id}-X-ERROR-APP",
+                app_id=app.app_id,
+                source="crosscheck",
+                rule_id="X-ERROR",
+                title="Cross-check could not finish",
+                reason=f"{type(e).__name__}: {str(e)[:150]}",
+                severity="low",
+                lane="human_review",
+            )
+        )
+
     return out

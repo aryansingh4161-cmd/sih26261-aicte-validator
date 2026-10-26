@@ -80,9 +80,9 @@ rules:
     severity: high
     lane: return_for_rectification
     title: Structural Stability Certificate out of validity
-    message: The certificate is older than its validity (the smaller of 5 years and the period written on the certificate).
+    message: The Structural Stability Certificate is more than 5 years old (or past the validity written on it).
     aph_clause: "6.17 h. - Structural Stability Certificate is valid for a period of FIVE years from the date of issue."
-    clause_verified: false
+    clause_verified: true
   - id: R-REC-ter_paid
     type: record_flag
     applies_to: [eoa_existing_regular, intake_increase]
@@ -110,7 +110,7 @@ rules:
     severity: info
     lane: info
     title: Previous EoA letter not provided
-    message: Without last year's approval letter the intake cross-checks are skipped.
+    message: Last year's Extension of Approval letter is missing, so the intake cross-checks were skipped.
     aph_clause: null
     clause_verified: false
   - id: R-AREA
