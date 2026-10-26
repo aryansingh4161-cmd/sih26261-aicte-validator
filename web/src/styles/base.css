@@ -1,4 +1,4 @@
-/* Base type and layout rules (DESIGN_SYSTEM.md sections 2, 4, 5). No gradients, no glass, shadows only on .pop / .modal / .drawer. */
+/* Base type and layout rules (DESIGN_SYSTEM.md sections 2, 4, 5). Flat colour only (no blends, no glass); shadows only on .pop / .modal / .drawer. */
 *, *::before, *::after { box-sizing: border-box; }
 html, body, #root { height: 100%; }
 body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font-body); font-size: 14px; line-height: 1.45; -webkit-font-smoothing: antialiased; }

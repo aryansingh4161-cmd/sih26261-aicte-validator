@@ -55,3 +55,10 @@ export function useSettings(): Settings {
   return s;
 }
 export const useT = () => useSettings().t;
+
+/** Where the role's main button goes (the role only changes this button, the summary, the default filter and the analytics scope). */
+export function mainActionPath(role: string, appId: string, lane: string): string {
+  if (role === "evc") return `/visit/${appId}`;
+  if (role === "regulation_bureau" && lane === "return_for_rectification") return `/case/${appId}/letter`;
+  return `/case/${appId}`;
+}

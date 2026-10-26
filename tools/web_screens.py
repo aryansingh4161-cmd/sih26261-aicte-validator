@@ -31,6 +31,15 @@ SHOTS = [
     ("08_letter_editor_dark", "/case/APP-03/letter", {"theme": "dark"}, []),
     ("08b_letter_sealed", "/case/APP-03/letter", {}, [("click", "Seal and issue"), ("wait", 2200)]),
     ("09_letters_outbox", "/letters", {}, []),
+    ("01_sign_in", "/sign-in", {"signed_out": True}, []),
+    ("01_sign_in_k4", "/sign-in", {"signed_out": True}, [("wait", 3700)]),
+    ("10_calendar", "/calendar", {}, []),
+    ("11_appeals", "/appeals", {}, [("click", "All")]),
+    ("12_analytics_leadership", "/analytics", {"role": "ec"}, []),
+    ("12_analytics_officer", "/analytics", {"role": "regulation_bureau"}, []),
+    ("14_search", "/search?q=fire%20expired", {}, []),
+    ("15_evc_visit_pack", "/visit/APP-15", {"role": "evc"}, [("click", "Differs")]),
+    ("17_privacy", "/privacy", {}, []),
 ]
 
 

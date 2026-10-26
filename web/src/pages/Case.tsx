@@ -4,7 +4,7 @@ import { useView } from "../data/hooks";
 import { currentMode } from "../data/client";
 import { useDemoActions } from "../data/actions";
 import type { Case as CaseT } from "../data/types";
-import { useSettings } from "../app/settings";
+import { mainActionPath, useSettings } from "../app/settings";
 import { Icon } from "../icons";
 import { ErrorState, LaneChip, LoadingTable } from "../components/ui";
 import { ChecklistCounts, TrustBar } from "../components/case";
@@ -35,7 +35,7 @@ export function CasePage() {
 }
 
 function CaseFrame({ c }: { c: CaseT }) {
-  const { t, mode } = useSettings();
+  const { t, mode, role } = useSettings();
   const nav = useNavigate();
   const demo = useDemoActions();
   const [assign, setAssign] = useState(false);
@@ -58,7 +58,7 @@ function CaseFrame({ c }: { c: CaseT }) {
             </div>
             {mode === "live" ? <a className="btn" href={`/api/cases/${c.app_id}/zip`} download><Icon name="download" />{t("Case ZIP")}</a>
               : <button className="btn" disabled title={t("The case ZIP is built by the server in the live app.")}><Icon name="download" />{t("Case ZIP")}</button>}
-            <button className="btn primary" onClick={() => nav(`/case/${c.app_id}/letter`)}>{t("Draft Letter of Deficiency")}<Icon name="arrow_forward" /></button>
+            <button className="btn primary" onClick={() => nav(role === "regulation_bureau" ? `/case/${c.app_id}/letter` : mainActionPath(role, c.app_id, c.lane))}>{c.action}<Icon name="arrow_forward" /></button>
           </div>
         </div>
         <div className="strip" style={{ marginTop: 12 }}>

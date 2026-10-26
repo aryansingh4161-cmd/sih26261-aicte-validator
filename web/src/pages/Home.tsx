@@ -4,7 +4,7 @@ import { useView } from "../data/hooks";
 import { currentMode } from "../data/client";
 import { useActions, useDemoActions } from "../data/actions";
 import type { Case, Officer, Queue, QueueItem } from "../data/types";
-import { useSettings } from "../app/settings";
+import { mainActionPath, useSettings } from "../app/settings";
 import { Icon } from "../icons";
 import { EmptyQueue, ErrorState, LaneChip, Skeleton } from "../components/ui";
 import { AppealText, ChainTimeline, ChecklistCounts, DocViewer, FindingCard, TrustBar, boxesFor } from "../components/case";
@@ -117,7 +117,7 @@ function QueueRow({ i, on, onClick, onOpen }: { i: QueueItem; on: boolean; onCli
 }
 
 function Preview({ item, index }: { item: QueueItem; index: number }) {
-  const { t } = useSettings();
+  const { t, role } = useSettings();
   const nav = useNavigate();
   const c = useView<Case>(`cases/${item.app_id}`);
   const [assignOpen, setAssignOpen] = useState(false);
@@ -142,7 +142,7 @@ function Preview({ item, index }: { item: QueueItem; index: number }) {
             {assignOpen && <AssignMenu appId={d.app_id} onClose={() => setAssignOpen(false)} />}
           </div>
           <button className="btn" onClick={() => nav(`/case/${d.app_id}`)}>{t("Open full case")}</button>
-          <button className="btn primary" onClick={() => nav(d.lane === "return_for_rectification" ? `/case/${d.app_id}/letter` : `/case/${d.app_id}`)}>
+          <button className="btn primary" onClick={() => nav(mainActionPath(role, d.app_id, d.lane))}>
             {d.action}<Icon name="arrow_forward" /></button>
         </div>
       </div>

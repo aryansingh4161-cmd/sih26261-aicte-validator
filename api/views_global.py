@@ -105,7 +105,7 @@ def analytics(ctx: Ctx) -> dict:
     res, mans, rows = ctx.results(), ctx.manifests(), _audit(ctx)
     role, recs = ROLES[ctx.role], ctx.records()
     scope = list(res.values())
-    if role["stage"] != "all":
+    if role["stage"] != "all" and ctx.role != "ec":                 # the Executive Committee sees every region (leadership view)
         scope = [r for r in scope if role["stage"] in stage_of(ctx, r, [x for x in rows if x["app_id"] == r.app_id],
                                                                recs.get(mans.get(r.app_id, {}).get("permanent_id")))]
     lanes = A.lane_split(scope)

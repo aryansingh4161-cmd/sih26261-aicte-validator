@@ -38,3 +38,14 @@ export type LetterFull = LetterDraft & { header: { file_no: string; date: string
 export type LetterRow = { kind: string; kind_label: string; app_id: string; institute: string; status: string; status_label: string;
   hash: string | null; date: string; file: string | null; verify?: string };
 export type OutboxRow = { id: string; kind: string; channel: string; to: string; subject: string; body: string; created_at: string };
+export type CalEvent = { date: string; kind: string; app_id: string | null; title: string; lane: string; detail?: string };
+export type Calendar = { events: CalEvent[]; next7: CalEvent[]; headline: string; note: string; today: string };
+export type Appeal = { appeal: string; app_id: string; institute: string; against: string; filed: string; days_left: number; state: string; state_label: string; clause: string };
+export type Appeals = { appeals: Appeal[]; open: number; headline: string; note: string };
+export type Analytics = { eyebrow: string; headline: string; synthetic: boolean; kpis: { value: string; label: string }[];
+  weeks: { week: string; clear: number; human_review: number; return_for_rectification: number }[]; top: { title: string; count: number }[];
+  regions: { region: string; files: number; clear: number; review: number; returned: number; median_days: number | null }[]; note: string };
+export type SearchRow = { app_id: string; institute: string; why: string; lane: string; lane_label: string; score: number };
+export type SearchRes = { query: string; rows: SearchRow[]; saved: { name: string; query: string; filters: Record<string, string>; count: number }[]; note: string };
+export type Evc = { app_id: string; institute: string; place: string; rows: { check: string; file_says: string; clause: string; photos: number }[];
+  map: { declared: [number, number]; geocoded: [number, number] | null; distance_km: number | null; demo: boolean }; photos: string[]; note: string };
