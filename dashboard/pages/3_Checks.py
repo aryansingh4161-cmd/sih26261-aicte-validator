@@ -20,7 +20,7 @@ by_id = {r.app_id: r for r in res}
 st.title(t("Checks"))
 
 st.subheader(t("Year-over-year changes (vs last year's MOCK record)"))
-yoy = [{t("Application"): f.app_id, t("Check"): f.rule_id, t("Finding"): f.title, t("Reason"): f.reason}
+yoy = [{t("Application"): f.app_id, t("Check"): f.rule_id, t("Finding"): t(f.title), t("Reason"): t(f.reason)}
        for r in res for f in r.findings if f.rule_id.startswith("X-YOY")]
 if yoy:
     st.dataframe(yoy, hide_index=True, width="stretch")
@@ -28,14 +28,14 @@ else:
     st.write(t("No unexplained changes."))
 
 st.subheader(t("Serial reuse across institutes"))
-ser = [{t("Application"): f.app_id, t("Finding"): f.title, t("Reason"): f.reason, t("Similarity"): f.confidence}
+ser = [{t("Application"): f.app_id, t("Finding"): t(f.title), t("Reason"): t(f.reason), t("Similarity"): f.confidence}
        for r in res for f in r.findings if f.rule_id == "X-SERIAL"]
 if ser:
     st.dataframe(ser, hide_index=True, width="stretch")
 else:
     st.write(t("No serial reuse found."))
 
-app_id = st.selectbox(t("Open application"), sorted(by_id))
+app_id = st.selectbox(t("Open application"), sorted(by_id), key="checks-app")
 r = by_id[app_id]
 st.subheader(t("Verification board") + f" — {app_id}")
 st.caption(t("MOCK rows come from simulated sources (docs/ADAPTERS.md)."))

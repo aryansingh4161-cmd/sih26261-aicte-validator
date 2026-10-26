@@ -14,6 +14,7 @@ TODAY = date(2026, 10, 26)
 TMP = tempfile.mkdtemp()
 DB, REUSE = os.path.join(TMP, "audit.db"), os.path.join(TMP, "reuse.db")
 os.environ["PRAMAAN_OUTBOX"] = os.path.join(TMP, "outbox")              # MOCK notifications stay in the test folder
+os.environ["PRAMAAN_I18N_CACHE"] = os.path.join(TMP, "i18n_cache.db")    # translation cache too
 _RES: dict = {}
 
 
@@ -378,7 +379,30 @@ def t_appeal_outbox():
     assert any("within 7 days" in r["body"] for r in box if r["kind"] == "lod_issued")
 
 
-TESTS = {"lod": t_lod, "resubmit": t_resubmit, "checklist": t_checklist, "queue": t_queue, "trust": t_trust, "seal": t_seal, "desk_page": t_desk_page, "yoy": t_yoy, "serial": t_serial, "verify_board": t_verify_board, "expiry": t_expiry, "feedback": t_feedback, "assign": t_assign, "export_case": t_export_case, "checks_pages": t_checks_pages, "geo": t_geo, "selfcheck": t_selfcheck, "selfcheck_page": t_selfcheck_page, "evc_pack": t_evc_pack, "analytics": t_analytics, "appeal_outbox": t_appeal_outbox}
+def t_i18n():
+    import time
+    from pramaan import i18n
+    assert i18n.t("Sign in as", "en") == "Sign in as"
+    calls = []
+    i18n.set_engine(lambda texts, lang: (calls.extend(texts), ["अनुवाद " + x for x in texts])[1])      # fake engine
+    src = "Fire Safety Certificate missing for APP-02 on 2026-10-26 (R-MISS-fire_cert), see \"ANNEXURE-2 2.1 v. text\"."
+    out = i18n.t(src, "hi")
+    assert out.startswith("अनुवाद ") and all(k in out for k in ("APP-02", "2026-10-26", "R-MISS-fire_cert", "ANNEXURE-2 2.1 v."))
+    assert not any(k in calls[0] for k in ("APP-02", "2026-10-26", "R-MISS-fire_cert")), calls[0]      # protected before the model
+    n = len(calls); i18n.t(src, "hi"); assert len(calls) == n                                          # cached: no second model call
+    assert i18n.t("APP-02 2026-10-26", "hi") == "APP-02 2026-10-26" and len(calls) == n                # placeholders only: no call
+    i18n.set_engine(lambda texts, lang: ["no placeholders here" for _ in texts])                       # a lost placeholder -> English
+    assert i18n.t("Expires on 2027-01-01", "ta") == "Expires on 2027-01-01"
+    i18n.set_engine(None)                                                                              # the real IndicTrans2 model
+    if not i18n.available():
+        raise AssertionError("IndicTrans2 model not loadable on this machine (gated download): see docs/FEATURES.md")
+    t0 = time.time(); hi = i18n.t("Upload a valid Fire Safety Certificate for APP-02.", "hi"); cold = time.time() - t0
+    assert any(ord(ch) > 127 for ch in hi) and "APP-02" in hi, hi
+    t0 = time.time(); i18n.t("Upload a valid Fire Safety Certificate for APP-02.", "hi"); warm = time.time() - t0
+    assert warm < cold, (cold, warm)
+
+
+TESTS = {"lod": t_lod, "resubmit": t_resubmit, "checklist": t_checklist, "queue": t_queue, "trust": t_trust, "seal": t_seal, "desk_page": t_desk_page, "yoy": t_yoy, "serial": t_serial, "verify_board": t_verify_board, "expiry": t_expiry, "feedback": t_feedback, "assign": t_assign, "export_case": t_export_case, "checks_pages": t_checks_pages, "geo": t_geo, "selfcheck": t_selfcheck, "selfcheck_page": t_selfcheck_page, "evc_pack": t_evc_pack, "analytics": t_analytics, "appeal_outbox": t_appeal_outbox, "i18n": t_i18n}
 
 if __name__ == "__main__":
     want = sys.argv[1:] or list(TESTS)

@@ -49,7 +49,7 @@ if c2.button(t("Queue reminders (MOCK outbox)")):
     st.success(t("Reminders queued") + f": {len(reminders(rows, today, settings.get('reminder_days', (60, 30, 7))))}")
 
 st.subheader(t("RTI / appeal case export"))
-app_id = st.selectbox(t("Application"), sorted(r.app_id for r in res))
+app_id = st.selectbox(t("Application"), sorted(r.app_id for r in res), key="export-app")
 if st.button(t("Build case ZIP")):
     zp = export_case(app_id, OUT, DB)
     st.download_button(t("Download case ZIP"), open(zp, "rb").read(), os.path.basename(zp), "application/zip")

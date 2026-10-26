@@ -20,7 +20,19 @@ SHOTS = [
     ("wk23_10", "Calendar_Exports", [("scroll", "Certificate expiries")]),
     ("wk23_12", "Calendar_Exports", [("signin", "Demo Officer South-East"), ("scroll", "My queue")]),
     ("wk23_13", "Calendar_Exports", [("click", "Build case ZIP"), ("scroll", "RTI / appeal case export")]),
+    ("wk23_17_hi", "Desk", [("select", "Open application", "APP-02"), ("select", "Language / भाषा", "Hindi")]),
+    ("wk23_17_ur", "Desk", [("select", "Open application", "APP-02"), ("select", "Language / भाषा", "Urdu")]),
 ]
+
+
+def settle(pg, timeout_s: int = 900) -> None:
+    """Wait until Streamlit has finished the current script run (the status widget with "Stop" disappears)."""
+    import time
+    pg.wait_for_timeout(800)
+    end = time.time() + timeout_s
+    w = pg.locator("[data-testid='stStatusWidget']")
+    while time.time() < end and w.count() and w.first.is_visible():
+        pg.wait_for_timeout(1000)
 
 
 def run(base: str, only: set | None, out_dir: str = "out/deck") -> list[str]:
@@ -53,7 +65,8 @@ def run(base: str, only: set | None, out_dir: str = "out/deck") -> list[str]:
                     elif st[0] == "scroll":                            # headings first (text matches can be hidden nodes)
                         h = pg.get_by_role("heading", name=st[1])
                         (h.first if h.count() else pg.get_by_text(st[1]).locator("visible=true").first).scroll_into_view_if_needed()
-                    pg.wait_for_timeout(1500)
+                    settle(pg)                                     # every step waits for its rerun (first-view translations)
+                pg.wait_for_timeout(1000)
                 path = os.path.join(out_dir, f"{name}.png")
                 pg.screenshot(path=path)
                 done.append(path); print("wrote", path, flush=True)

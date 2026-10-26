@@ -12,6 +12,7 @@ from datetime import date
 import streamlit as st
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+sys.path.insert(0, os.getcwd())
 from pramaan.audit import GENESIS, AuditLog  # noqa: E402
 
 OUT = os.environ.get("PRAMAAN_OUT", "output")
@@ -21,6 +22,8 @@ SOURCES = ("rule", "crosscheck", "pdf_forensics", "tamper_model", "photo", "veri
 DECISION_LANE = {"Approve for next step": "clear", "Return for rectification": "return_for_rectification",
                  "Send to expert review": "human_review"}
 st.set_page_config(page_title="Pramaan AI - analytics", layout="wide")
+from dashboard.ui import language, show_table, t  # noqa: E402  (WK23-17)
+language()
 
 
 def results() -> list[dict]:
@@ -54,46 +57,46 @@ def audit_rows() -> tuple[list[dict], bool | None, int | None]:
     return rows, True, None
 
 
-st.title("Analytics")
-st.caption("Read only. AI output is advisory; officers decide. MOCK verification sources are simulated (designed for integration).")
+st.title(t("Analytics"))
+st.caption(t("Read only. AI output is advisory; officers decide. MOCK verification sources are simulated (designed for integration)."))
 res = results()
 rows, chain_ok, bad_id = audit_rows()
 if not res:
-    st.info("No results yet: run the pipeline (officer view, admin role) to fill output/.")
+    st.info(t("No results yet: run the pipeline (officer view, admin role) to fill output/."))
 today = st.sidebar.date_input("Check SLA due dates against", value=date.today())
 
 c = st.columns(4)
-c[0].metric("Applications", len(res))
-c[1].metric("Findings", sum(len(r["findings"]) for r in res))
-c[2].metric("Mean processing seconds", f"{sum(r['seconds_taken'] for r in res) / len(res):.2f}" if res else "-")
-c[3].metric("Audit chain", {True: "intact", False: f"BROKEN at row {bad_id}", None: "no audit log"}[chain_ok])
+c[0].metric(t("Applications"), len(res))
+c[1].metric(t("Findings"), sum(len(r["findings"]) for r in res))
+c[2].metric(t("Mean processing seconds"), f"{sum(r['seconds_taken'] for r in res) / len(res):.2f}" if res else "-")
+c[3].metric(t("Audit chain"), t({True: "intact", False: f"BROKEN at row {bad_id}", None: "no audit log"}[chain_ok]))
 
 left, right = st.columns(2)
 with left:
-    st.markdown("#### Applications per lane")
+    st.markdown("#### " + t("Applications per lane"))
     lanes = Counter(r["lane"] for r in res)
-    st.dataframe([{"lane": k, "applications": lanes.get(k, 0)} for k in LANES], hide_index=True, width="stretch")
-    st.markdown("#### Findings per source")
+    show_table([{"lane": k, "applications": lanes.get(k, 0)} for k in LANES], hide_index=True, width="stretch")
+    st.markdown("#### " + t("Findings per source"))
     src = Counter(f["source"] for r in res for f in r["findings"])
-    st.dataframe([{"source": k, "findings": src.get(k, 0)} for k in SOURCES], hide_index=True, width="stretch")
+    show_table([{"source": k, "findings": src.get(k, 0)} for k in SOURCES], hide_index=True, width="stretch")
 with right:
-    st.markdown("#### Alerts by kind")
-    st.caption(f"Overdue = due date before {today.isoformat()}. SLA days are configurable ASSUMPTIONS (config/settings.yaml), not AICTE rules.")
+    st.markdown("#### " + t("Alerts by kind"))
+    st.caption(t(f"Overdue = due date before {today.isoformat()}. SLA days are configurable ASSUMPTIONS (config/settings.yaml), not AICTE rules."))
     kinds: dict = {}
     for r in res:
         for a in r["alerts"]:
             k = kinds.setdefault(a["kind"], [0, 0]); k[0] += 1; k[1] += int(a["due_by"] < today.isoformat())
-    st.dataframe([{"kind": k, "alerts": v[0], "overdue": v[1], "within SLA": v[0] - v[1]} for k, v in sorted(kinds.items())]
+    show_table([{"kind": k, "alerts": v[0], "overdue": v[1], "within SLA": v[0] - v[1]} for k, v in sorted(kinds.items())]
                  or [{"kind": "-", "alerts": 0, "overdue": 0, "within SLA": 0}], hide_index=True, width="stretch")
-    st.markdown("#### Pending verifications")
+    st.markdown("#### " + t("Pending verifications"))
     pend = [{"application": r["app_id"], "document": v["doc_id"], "method": v["method"], "source": v["source"], "since": v["timestamp"][:19]}
             for r in res for v in r["verifications"] if v["status"] == "verification_pending"]
     if pend:
-        st.dataframe(pend, hide_index=True, width="stretch")
+        show_table(pend, hide_index=True, width="stretch")
     else:
-        st.caption("None pending.")
+        st.caption(t("None pending."))
 
-st.markdown("#### Officer decisions vs AI lane")
+st.markdown("#### " + t("Officer decisions vs AI lane"))
 dec = []
 for x in rows:
     if x["action"].startswith("decision: "):
@@ -101,49 +104,49 @@ for x in rows:
         dec.append({"ts": x["ts"], "application": x["app_id"], "officer": x["actor"], "role": x["role"], "decision": choice,
                     "AI lane": d.get("ai_lane"), "agrees": DECISION_LANE.get(choice) == d.get("ai_lane")})
 if not dec:
-    st.info("no decisions yet")
+    st.info(t("no decisions yet"))
 else:
     agree = sum(d["agrees"] for d in dec)
-    st.metric("Agreement (officer decision maps to the AI lane)", f"{agree / len(dec):.0%}", help=f"{agree} of {len(dec)} decisions")
-    st.caption("Mapping: Approve for next step = clear; Return for rectification = return_for_rectification; "
-               "Send to expert review = human_review. Every decision counts (an application may have several).")
-    st.dataframe(dec, hide_index=True, width="stretch")
+    st.metric(t("Agreement (officer decision maps to the AI lane)"), f"{agree / len(dec):.0%}", help=f"{agree} of {len(dec)} decisions")
+    st.caption(t("Mapping: Approve for next step = clear; Return for rectification = return_for_rectification; "
+               "Send to expert review = human_review. Every decision counts (an application may have several)."))
+    show_table(dec, hide_index=True, width="stretch")
 
-st.markdown("#### Latest 50 audit rows")
-st.caption({True: "Chain intact: every row's hash recomputes from the previous one.",
-            False: f"Chain BROKEN at row {bad_id}: a row was changed or removed.", None: "No audit log yet."}[chain_ok])
-st.dataframe([{k: x[k] for k in ("id", "ts", "actor", "role", "action", "app_id")} | {"hash": x["hash"][:16]} for x in rows[-50:][::-1]],
+st.markdown("#### " + t("Latest 50 audit rows"))
+st.caption(t({True: "Chain intact: every row's hash recomputes from the previous one.",
+            False: f"Chain BROKEN at row {bad_id}: a row was changed or removed.", None: "No audit log yet."}[chain_ok]))
+show_table([{k: x[k] for k in ("id", "ts", "actor", "role", "action", "app_id")} | {"hash": x["hash"][:16]} for x in rows[-50:][::-1]],
              hide_index=True, width="stretch")
 
 # ---------------- WK23-16 leadership view (read only) ----------------
 from pramaan import analytics as A  # noqa: E402
 from pramaan.schemas import ApplicationResult  # noqa: E402
 
-st.markdown("## Leadership view")
+st.markdown("## " + t("Leadership view"))
 RES = [ApplicationResult.model_validate(x) for x in results()]
 MANS = {}
 for p in sorted(glob.glob(os.path.join(os.environ.get("PRAMAAN_APPS", "data/demo/apps"), "*.json"))):
     m = json.load(open(p)); MANS[m["app_id"]] = m
 c1, c2, c3 = st.columns(3)
 k, n = A.auto_cleared_share(RES, rows)
-c1.metric("Share auto-cleared (clear-queue batches)", f"{k} of {n}")
+c1.metric(t("Share auto-cleared (clear-queue batches)"), f"{k} of {n}")
 med = A.median_processing_days(RES, MANS)
-c2.metric("Median processing time (days, synthetic)", "-" if med is None else f"{med:g}",
-          help="Synthetic: demo submission dates vs the pipeline run time. Not a measured office figure.")
+c2.metric(t("Median processing time (days, synthetic)"), "-" if med is None else f"{med:g}",
+          help=t("Synthetic: demo submission dates vs the pipeline run time. Not a measured office figure."))
 br = A.sla_breaches(RES, rows, date.today())
-c3.metric("SLA breaches (alerts past due, no decision)", len(br))
-st.markdown("#### Top 10 deficiencies")
-st.dataframe([{"deficiency": title, "count": c} for title, c in A.top_deficiencies(RES)], hide_index=True, width="stretch")
-st.markdown("#### Deficiencies by region")
-st.dataframe([{"region": k2, **v} for k2, v in A.by_region(RES, MANS).items()], hide_index=True, width="stretch")
-st.markdown("#### Lane split")
-st.bar_chart(A.lane_split(RES))
-st.markdown("#### False-alarm rate per rule (officer feedback)")
+c3.metric(t("SLA breaches (alerts past due, no decision)"), len(br))
+st.markdown("#### " + t("Top 10 deficiencies"))
+show_table([{"deficiency": title, "count": c} for title, c in A.top_deficiencies(RES)], hide_index=True, width="stretch")
+st.markdown("#### " + t("Deficiencies by region"))
+show_table([{"region": k2, **v} for k2, v in A.by_region(RES, MANS).items()], hide_index=True, width="stretch")
+st.markdown("#### " + t("Lane split"))
+st.bar_chart({t(k.replace("_", " ")): v for k, v in A.lane_split(RES).items()})
+st.markdown("#### " + t("False-alarm rate per rule (officer feedback)"))
 fa = A.false_alarms_readonly(DB)
 if fa:
-    st.dataframe([{"rule": r2, **v} for r2, v in sorted(fa.items())], hide_index=True, width="stretch")
+    show_table([{"rule": r2, **v} for r2, v in sorted(fa.items())], hide_index=True, width="stretch")
 else:
-    st.caption("No officer feedback yet.")
+    st.caption(t("No officer feedback yet."))
 if br:
-    st.markdown("#### SLA breaches")
-    st.dataframe(br, hide_index=True, width="stretch")
+    st.markdown("#### " + t("SLA breaches"))
+    show_table(br, hide_index=True, width="stretch")

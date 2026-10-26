@@ -9,7 +9,7 @@ import yaml
 
 sys.path.insert(0, os.getcwd())
 from pramaan.audit import AuditLog  # noqa: E402
-from pramaan.i18n import LANGUAGES, banner, t as _t  # noqa: E402
+from pramaan.i18n import LANGUAGES, RTL, banner, t as _t  # noqa: E402
 from pramaan.schemas import ApplicationResult  # noqa: E402
 
 OUT = os.environ.get("PRAMAAN_OUT", "output")                  # tests point the pages at their own folder
@@ -24,13 +24,21 @@ def t(text: str) -> str:
     return _t(text, lang())
 
 
-def sidebar(page: str, roles: tuple = ("scrutiny_officer", "admin", "viewer")) -> dict:
-    """Language selector + sign-in (demo users, no passwords). Returns the signed-in user; logs one page view per change."""
+def language() -> str:
+    """Language selector on every page + the machine-translation banner; Urdu pages are laid out right to left."""
     names = list(LANGUAGES)
     st.session_state["lang"] = st.sidebar.selectbox("Language / भाषा", names, index=names.index(lang()),
-                                                    format_func=lambda k: LANGUAGES[k])
+                                                    format_func=lambda k: LANGUAGES[k], key="lang-select")
     if lang() != "en":
-        st.sidebar.info(banner(lang()))
+        st.info(banner(lang()))
+    if lang() in RTL:
+        st.markdown("<style>[data-testid='stMainBlockContainer'] {direction: rtl; text-align: right}</style>", unsafe_allow_html=True)
+    return lang()
+
+
+def sidebar(page: str, roles: tuple = ("scrutiny_officer", "admin", "viewer")) -> dict:
+    """Language selector + sign-in (demo users, no passwords). Returns the signed-in user; logs one page view per change."""
+    language()
     with open("config/users.yaml") as f:
         users = [u for u in (yaml.safe_load(f) or {}).get("users", []) if u["role"] in roles]
     user = st.sidebar.selectbox(t("Sign in as"), users, format_func=lambda u: f"{u['name']} ({u['role']})")
@@ -41,6 +49,16 @@ def sidebar(page: str, roles: tuple = ("scrutiny_officer", "admin", "viewer")) -
             log.append(user["id"], user["role"], f"page view: {page}", None, {"ui": "dashboard"})
         st.session_state[f"view-{page}"] = key
     return user
+
+
+def table(rows: list[dict]) -> list[dict]:
+    """Translate column headers (values are data: ids, numbers, names)."""
+    return [{t(k): v for k, v in r.items()} for r in rows]
+
+
+def show_table(rows, **kw):
+    """st.dataframe with translated column headers (lists of dicts); anything else is shown as it is."""
+    return st.dataframe(table(rows) if isinstance(rows, list) and rows and isinstance(rows[0], dict) else rows, **kw)
 
 
 def rtl(markdown: str) -> None:

@@ -22,6 +22,7 @@ from pramaan.trust import app_score  # noqa: E402
 
 st.set_page_config(page_title="Pramaan - Desk", layout="wide")
 user = sidebar("Desk")
+L = st.session_state.get("lang", "en")
 res, mans = results(), manifests()
 if not res:
     st.warning(t("No results yet. Run the pipeline first (python -m pramaan.demo --no-dashboard)."))
@@ -34,32 +35,32 @@ rows = []
 for r in sorted(res, key=lambda r: -r.priority):
     m = mans.get(r.app_id, {}).get("declared", {})
     rows.append({t("Application"): r.app_id, t("Lane"): t(r.lane.replace("_", " ")), t("Priority"): round(r.priority, 2),
-                 t("Trust score"): app_score(r, st.session_state.get("lang", "en"))["score"], t("Checklist"): counts(tick(r)),
+                 t("Trust score"): app_score(r, L)["score"], t("Checklist"): counts(tick(r, lang=L), L),
                  t("Region"): m.get("region", ""), t("Assigned officer"): m.get("assigned_officer", "")})
 st.dataframe(rows, hide_index=True, width="stretch")
 st.caption(t("Trust score: designed score, not a probability (weights in config/settings.yaml)."))
 
 tab_app, tab_queue = st.tabs([t("Application"), t("Clear queue")])
 with tab_app:
-    app_id = st.selectbox(t("Open application"), [r[t("Application")] for r in rows])
+    app_id = st.selectbox(t("Open application"), [r[t("Application")] for r in rows], key="desk-app")   # key: survives a language switch
     r, m = by_id[app_id], mans.get(app_id, {})
     c1, c2 = st.columns([3, 2])
     with c1:
-        st.subheader(t("Checklist") + f" — {counts(tick(r))}")
-        for row in tick(r):
+        st.subheader(t("Checklist") + f" — {counts(tick(r, lang=L), L)}")
+        for row in tick(r, lang=L):
             with st.expander(f"{COLOUR[row['status']]} {row['id']} {row['item']}" + (f"  ({row['ref']})" if row["ref"] else "")):
                 rtl(row["why"])
                 for e in row["evidence"][:3]:
                     st.caption(f"{t('Evidence')}: {e['doc_id']} p.{e['page']}" + (f" — {e['text']}" if e.get("text") else ""))
     with c2:
-        sc = app_score(r)
+        sc = app_score(r, L)
         st.subheader(t("Trust score") + f": {sc['score']}/100")
         st.caption(sc["label"])
         for why in sc["reasons"]:
             st.write("- " + why)
         prev = [a for a, mm in mans.items() if mm.get("permanent_id") == m.get("permanent_id") and a < app_id and a in by_id]
         if prev:
-            d = compare(by_id[prev[-1]], r)
+            d = compare(by_id[prev[-1]], r, L)
             st.subheader(t("Resubmission of") + f" {prev[-1]}")
             st.info(d["summary"])
             st.dataframe([{t("Deficiency"): x["title"], t("Status"): t(x["status"])} for x in d["deficiencies"]], hide_index=True)
@@ -73,7 +74,7 @@ with tab_app:
                 f"{t('deadline')} {ap['deadline']} ({ap['days_left']} {t('days left')}). {ap['clause']}")
     st.subheader(t("Letter of Deficiency (draft)"))
     lod = build_lod(r, institute=m.get("declared", {}).get("institute_name", "[Institute name]"),
-                    permanent_id=m.get("permanent_id", "[Permanent Id]"), lang=st.session_state.get("lang", "en"))
+                    permanent_id=m.get("permanent_id", "[Permanent Id]"), lang=L)
     text = st.text_area(t("Edit the letter before export"), lod["text"], height=320, key=f"lod-{app_id}", disabled=locked)
     if lod["notes"]:
         st.caption(t("Internal notes (not sent to the institute)") + ": " + "; ".join(n["what"] for n in lod["notes"]))
@@ -95,7 +96,7 @@ with tab_app:
     if st.button(t("Build EVC visit pack (sealed)")):
         recs = json.load(open("data/aicte_records.json")) if os.path.exists("data/aicte_records.json") else {}
         with AuditLog(DB) as log:
-            st.session_state[f"evc-{app_id}"] = evc_pack(r, recs.get(m.get("permanent_id")), log, lang=st.session_state.get("lang", "en"))
+            st.session_state[f"evc-{app_id}"] = evc_pack(r, recs.get(m.get("permanent_id")), log, lang=L)
     if st.session_state.get(f"evc-{app_id}"):
         st.download_button(t("Download EVC pack"), st.session_state[f"evc-{app_id}"], f"{app_id}_EVC_pack.html", "text/html")
         st.html(st.session_state[f"evc-{app_id}"])

@@ -66,7 +66,9 @@ def build_lod(result: ApplicationResult, institute: str = "[Institute name]", pe
     for d in defs:
         body += [f"{d['n']}. {d['what']} ({d['document']})", f"   {d['reason']}"]
         if d["clause"]:
-            body.append(f"   {t('Handbook', lang)}: \"{d['clause']}\"")
+            body.append(f"   {t('Handbook', lang)}: \"{d['clause']}\"")              # the official English clause, never translated
+            if lang != "en":
+                body.append(f"   ({t('gist, machine-translated', lang)}: {t(d['clause'].split(' - ', 1)[-1], lang)})")
         body.append(f"   {t('To submit', lang)}: {d['to_submit']}")
     text = "\n".join(head + body + ["", t(FOOTER, lang)])
     return {"app_id": result.app_id, "deficiencies": defs, "notes": notes, "text": text, "html": to_html(text, notes, lang)}

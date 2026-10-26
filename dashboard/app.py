@@ -20,6 +20,7 @@ OUT, DB = "output", "output/audit.db"
 LANE = {"human_review": ("Send to human review", "#c2410c"), "return_for_rectification": ("Return for rectification", "#b86e00"),
         "clear": ("No issues found", "#1f7a3a")}
 st.set_page_config(page_title="Pramaan AI - officer view", layout="wide")
+from dashboard.ui import language, t  # noqa: E402  (WK23-17: every string through t())
 
 
 def load():
@@ -42,7 +43,7 @@ def page_image(path, page, boxes):
             d.rectangle([b["x0"] * W - 3, b["y0"] * H - 3, b["x1"] * W + 3, b["y1"] * H + 3], outline=(220, 38, 38), width=3)
         return img
     except Exception as e:
-        st.caption(f"preview not available: {e}")
+        st.caption(f"{t('preview not available')}: {e}")
         return None
 
 
@@ -61,64 +62,67 @@ def view_once(log, user, app_id, what):
 
 
 st.sidebar.title("Pramaan AI")
-st.sidebar.caption("AI advisory only. The officer decides. The tool never rejects.")
+language()
+st.sidebar.caption(t("AI advisory only. The officer decides."))
 USERS, ROLES = users()
-user = st.sidebar.selectbox("Sign in as", USERS, format_func=lambda u: f"{u['name']} ({u['role']})")
+user = st.sidebar.selectbox(t("Sign in as"), USERS, format_func=lambda u: f"{u['name']} ({u['role']})")
 PERMS = set(ROLES.get(user["role"], []))
-st.sidebar.caption("demo users, no passwords (designed for SSO)")
+st.sidebar.caption(t("demo users, no passwords (designed for SSO)"))
 os.makedirs(OUT, exist_ok=True)
 log = AuditLog(DB)
 if st.session_state.get("signed_in") != user["id"]:
     log.append(user["id"], user["role"], "sign in", None, {"permissions": sorted(PERMS), "auth": "demo, no password"})
     st.session_state["signed_in"] = user["id"]
 if "run_pipeline" in PERMS:
-    if st.sidebar.button("Run pipeline on demo applications"):
-        with st.spinner("Processing..."):
+    if st.sidebar.button(t("Run pipeline on demo applications")):
+        with st.spinner(t("Processing...")):
             for m in sorted(glob.glob("data/demo/apps/*.json")):
                 run_application(m, OUT, date(2026, 10, 26), DB)
         log.append(user["id"], user["role"], "run pipeline", None, {"apps": "data/demo/apps/*.json"})
-        st.sidebar.success("Done")
+        st.sidebar.success(t("Done"))
 else:
-    st.sidebar.caption("Running the pipeline needs the admin role.")
+    st.sidebar.caption(t("Running the pipeline needs the admin role."))
 if "read" not in PERMS:
-    st.warning("This role cannot view applications.")
+    st.warning(t("This role cannot view applications."))
     st.stop()
 results = load()
 if not results:
-    st.info("No results yet. Click 'Run pipeline on demo applications' in the sidebar.")
+    st.info(t("No results yet. Click 'Run pipeline on demo applications' in the sidebar."))
     st.stop()
-lane_f = st.sidebar.multiselect("Lane", list(LANE), default=list(LANE))
+lane_f = st.sidebar.multiselect(t("Lane"), list(LANE), default=list(LANE), format_func=lambda k: t(LANE[k][0]))
 rows = sorted((r for r in results if r["lane"] in lane_f), key=lambda r: -r.get("priority", 0.0))
-st.subheader("Queue")
-st.dataframe([{"application": r["app_id"], "priority": r.get("priority", 0.0), "lane": LANE[r["lane"]][0], "findings": len(r["findings"]),
-               "high": sum(f["severity"] == "high" for f in r["findings"]),
-               "earliest due": min((a["due_by"] for a in r["alerts"]), default="-"), "seconds": r["seconds_taken"]} for r in rows],
+st.subheader(t("Queue"))
+st.dataframe([{t("application"): r["app_id"], t("priority"): r.get("priority", 0.0), t("lane"): t(LANE[r["lane"]][0]),
+               t("findings"): len(r["findings"]), t("high"): sum(f["severity"] == "high" for f in r["findings"]),
+               t("earliest due"): min((a["due_by"] for a in r["alerts"]), default="-"), t("seconds"): r["seconds_taken"]} for r in rows],
              width="stretch", hide_index=True)
 if not rows:
     st.stop()
-app = st.selectbox("Open application", [r["app_id"] for r in rows])
+app = st.selectbox(t("Open application"), [r["app_id"] for r in rows], key="officer-app")
 r = next(x for x in rows if x["app_id"] == app)
 view_once(log, user, app, "application")
 label, col = LANE[r["lane"]]
 st.markdown(f"<div style='background:{col};color:white;padding:10px 16px;border-radius:6px;font-size:20px;display:inline-block'>"
-            f"{label}</div> &nbsp; <span style='color:#555'>advisory, {len(r['findings'])} findings</span>", unsafe_allow_html=True)
+            f"{t(label)}</div> &nbsp; <span style='color:#555'>{t('advisory')}, {len(r['findings'])} {t('findings')}</span>", unsafe_allow_html=True)
 left, right = st.columns([1, 1])
 docs = {d["doc_id"]: d for d in r["documents"]}
 with left:
-    st.markdown("#### Findings")
+    st.markdown("#### " + t("Findings"))
     for i, f in enumerate(sorted(r["findings"], key=lambda f: ["human_review", "return_for_rectification", "info"].index(f["lane"]))):
-        with st.expander(f"[{f['severity'].upper()}] {f['title']}", expanded=i < 2):
-            st.write(f["reason"])
-            st.caption(f"{f['source']} | {f['rule_id']} | confidence {f['confidence']:.0%} | lane: {f['lane']}")
+        with st.expander(f"[{f['severity'].upper()}] {t(f['title'])}", expanded=i < 2):
+            st.write(t(f["reason"]))
+            st.caption(f"{f['source']} | {f['rule_id']} | {t('confidence')} {f['confidence']:.0%} | {t('lane')}: {t(f['lane'].replace('_', ' '))}")
             if f.get("aph_clause"):
-                st.caption(f"Handbook: {f['aph_clause']}" + ("" if f["clause_verified"] else "  (clause UNVERIFIED)"))
+                st.caption(f"{t('Handbook')}: {f['aph_clause']}" + ("" if f["clause_verified"] else f"  ({t('clause UNVERIFIED')})"))
+                if st.session_state.get("lang", "en") != "en":           # official English clause stays; gist below in italics
+                    st.caption(f"*{t('Gist')}: {t(f['aph_clause'].split(' - ', 1)[-1])}*")
             for e in f["evidence"]:
-                if st.button(f"Show evidence: {e['doc_id']} p.{e['page']}", key=f"{f['finding_id']}-{e['doc_id']}-{e['page']}"):
+                if st.button(f"{t('Show evidence')}: {e['doc_id']} p.{e['page']}", key=f"{f['finding_id']}-{e['doc_id']}-{e['page']}"):
                     st.session_state["ev"] = e
-    st.markdown("#### Verification (MOCK = simulated source)")
-    st.dataframe([{"document": v["doc_id"], "method": v["method"], "source": v["source"], "status": v["status"],
-                   "mock": "MOCK" if v["mock"] else "real", "note": v["note"]} for v in r["verifications"]], hide_index=True)
-    st.markdown("#### Verification timeline (from the audit log; MOCK sources, designed for integration)")
+    st.markdown("#### " + t("Verification (MOCK = simulated source)"))
+    st.dataframe([{t("document"): v["doc_id"], t("method"): v["method"], t("source"): v["source"], t("status"): t(v["status"].replace("_", " ")),
+                   "MOCK": "MOCK" if v["mock"] else t("real"), t("note"): t(v["note"])} for v in r["verifications"]], hide_index=True)
+    st.markdown("#### " + t("Verification timeline (from the audit log; MOCK sources, designed for integration)"))
     tl: dict = {}
     for x in log.rows(app):
         if x["action"] == "source response":
@@ -131,29 +135,29 @@ with left:
             f"`{e['status']}` at {str(e['ts'])[:19].replace('T', ' ')} <span style='color:#777'>({e['source']}, "
             f"payload {e['hash'][:12]})</span>" for e in steps), unsafe_allow_html=True)
 with right:
-    st.markdown("#### Document")
+    st.markdown("#### " + t("Document"))
     ev = st.session_state.get("ev")
     if ev and ev["doc_id"] in docs:
         d = docs[ev["doc_id"]]
         img = page_image(d["path"], ev["page"], [ev["bbox"]] if ev.get("bbox") else [])
         if img is not None:
-            st.image(img, caption=f"{d['filename']} ({d['doc_type']}) - red box = evidence", width="stretch")
+            st.image(img, caption=f"{d['filename']} ({d['doc_type']}) - {t('red box = evidence')}", width="stretch")
     else:
-        st.caption("Click 'Show evidence' on a finding to see the highlighted region.")
-st.markdown("#### Officer decision")
+        st.caption(t("Click 'Show evidence' on a finding to see the highlighted region."))
+st.markdown("#### " + t("Officer decision"))
 c1, c2 = st.columns([2, 1])
-comment = c1.text_input("Reason (required)", key=f"c-{app}")
-decision = c2.selectbox("Decision", ["Approve for next step", "Return for rectification", "Send to expert review"], key=f"d-{app}")
+comment = c1.text_input(t("Reason (required)"), key=f"c-{app}")
+decision = c2.selectbox(t("Decision"), ["Approve for next step", "Return for rectification", "Send to expert review"], key=f"d-{app}", format_func=t)
 if "decide" not in PERMS:
-    st.info(f"Signed in as {user['role']}: read only. Only a scrutiny officer can record a decision.")
-elif st.button("Record decision"):
+    st.info(t(f"Signed in as {user['role']}: read only. Only a scrutiny officer can record a decision."))
+elif st.button(t("Record decision")):
     if not comment.strip():
-        st.error("Write a reason first. Every decision needs one.")
+        st.error(t("Write a reason first. Every decision needs one."))
     else:
         log.append(user["id"], user["role"], f"decision: {decision}", app, {"comment": comment, "ai_lane": r["lane"]})
         send("decision", f"institute of {app}", {"app_id": app, "decision": decision.lower()})   # WK23-20 MOCK outbox
-        st.success("Decision recorded in the audit log.")
+        st.success(t("Decision recorded in the audit log."))
 ok, bad = log.verify_chain()
-st.caption(f"Audit chain: {'intact' if ok else f'BROKEN at row {bad}'} | head {log.head()[:16]}...")
-with st.expander("Audit log for this application"):
+st.caption(f"{t('Audit chain')}: {t('intact') if ok else t(f'BROKEN at row {bad}')} | head {log.head()[:16]}...")
+with st.expander(t("Audit log for this application")):
     st.dataframe([{k: x.get(k) for k in ("id", "ts", "actor", "role", "action", "hash")} for x in log.rows(app)], hide_index=True)
