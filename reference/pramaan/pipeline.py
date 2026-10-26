@@ -115,7 +115,9 @@ def _run(log: AuditLog, manifest_path, out_dir, today, audit_db, records_path, s
             findings += check_metadata(app.app_id, d, app.submitted_on, specs_dir=specs_dir)
             if d.doc_type == "affidavit_2" or d.metadata.get("has_signature_field"):
                 vers.append(signature_check(d, trust))
-            findings += tamper_check(app.app_id, d, weights, float(st.get("tamper_threshold", 0.5)))
+            ens = st.get("tamper_mode") == "ensemble" and st.get("tamper_threshold_ensemble") is not None
+            findings += tamper_check(app.app_id, d, weights, float(st.get("tamper_threshold_ensemble" if ens else "tamper_threshold", 0.5)),
+                                     "ensemble" if ens else "single", st.get("tamper_weights_2"))
         with _step(timings, "verification"):
             vers += verify_document(d, app, records)
     if not available(weights):

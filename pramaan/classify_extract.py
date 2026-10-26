@@ -9,6 +9,7 @@ from functools import lru_cache
 
 import yaml
 
+from .fuzzy import fix_date_chars, label_matches, repair_line
 from .schemas import DocumentRecord, Evidence, ExtractedField
 from .util import iso, parse_date
 
@@ -25,7 +26,7 @@ def load_specs(specs_dir: str) -> tuple:
 def _norm_value(v: str, typ: str):
     v = v.strip().strip(",;:")
     if typ == "date":
-        d = parse_date(v)
+        d = parse_date(v) or parse_date(fix_date_chars(v))          # WK22: OCR O/0, l/1 swaps inside a date
         return (iso(d), 0.95) if d else (v, 0.4)
     if typ == "int":
         m = re.search(r"\d+", v)
@@ -40,8 +41,16 @@ def _field(doc: DocumentRecord, name: str, fs: dict):
         return ExtractedField(name=name, value=lines[0].text, confidence=0.7, method=method,
                               evidence=Evidence(doc_id=doc.doc_id, page=lines[0].page, bbox=lines[0].bbox, text=lines[0].text[:200]))
     labels = [l.lower() for l in fs.get("labels", [])]
+    ocr = method == "ocr"                   # WK22: OCR lines get fuzzy labels; text PDFs are matched exactly, as before
+    if ocr:
+        known = list(fs.get("labels", [])) + [m.group(1).strip() for p in fs.get("patterns", [])
+                                              if (m := re.match(r"\^?([A-Za-z][A-Za-z ]{3,})", p))]
+        lines = [b.model_copy(update={"text": repair_line(b.text, known)}) for b in lines]
+
+    def is_label(t):
+        return t.strip().rstrip(":").lower() in labels or (ocr and any(label_matches(t, l) for l in labels))
     for i, b in enumerate(lines):
-        if labels and b.text.strip().rstrip(":").lower() in labels and i + 1 < len(lines):
+        if labels and is_label(b.text) and i + 1 < len(lines):
             val, conf = _norm_value(lines[i + 1].text, fs.get("type", "text"))
             nb = lines[i + 1]
             return ExtractedField(name=name, value=val, confidence=conf * nb.conf, method=method,
@@ -150,6 +159,34 @@ def _tables(doc: DocumentRecord, spec: dict) -> dict:
     return out
 
 
+def _cell_fields(doc: DocumentRecord, spec: dict) -> dict:
+    """WK22, text PDFs: a field with `cell_labels` is read from the grid cell right of the cell that starts with one of the
+    labels (a short qualifier such as "/University" may follow). Wrapped cell lines are joined with spaces."""
+    want = {n: [l.lower() for l in fs["cell_labels"]] for n, fs in (spec.get("fields") or {}).items() if fs.get("cell_labels")}
+    if not want or doc.is_scanned or not doc.path.lower().endswith(".pdf"):
+        return {}
+    import pdfplumber
+    out = {}
+    with pdfplumber.open(doc.path) as pdf:
+        for pno, page in enumerate(pdf.pages[:2], start=1):
+            for t in page.find_tables():
+                for row in t.rows:
+                    texts = [page.within_bbox(c).extract_text() if c else "" for c in row.cells]
+                    for j, txt in enumerate(texts[:-1]):
+                        head = re.sub(r"\s+", " ", txt or "").strip().lower()
+                        for name, labs in want.items():
+                            if name in out or not any(head.startswith(l) and len(head) <= len(l) + 20 for l in labs):
+                                continue
+                            val = re.sub(r"\s+", " ", texts[j + 1] or "").strip()
+                            c = row.cells[j + 1]
+                            if val and c:
+                                W, H = float(page.width), float(page.height)
+                                out[name] = ExtractedField(name=name, value=val, confidence=0.9, method="table",
+                                                           evidence=Evidence(doc_id=doc.doc_id, page=pno, text=val[:200],
+                                                                             bbox={"x0": c[0] / W, "y0": c[1] / H, "x1": c[2] / W, "y1": c[3] / H}))
+    return out
+
+
 def classify_and_extract(doc: DocumentRecord, specs_dir: str = "config/doc_specs") -> DocumentRecord:
     try:
         specs = load_specs(specs_dir)
@@ -167,6 +204,10 @@ def classify_and_extract(doc: DocumentRecord, specs_dir: str = "config/doc_specs
             if slot_spec is not None:      # no readable text: trust the upload slot, with low confidence
                 return doc.model_copy(update={"doc_type": doc.slot, "doc_type_confidence": 0.3})
             return doc.model_copy(update={"doc_type": "unclassified", "doc_type_confidence": 0.0})
+        try:
+            best_fields.update(_cell_fields(doc, best))
+        except Exception:
+            pass                                    # grid not readable: keep the pattern result
         return doc.model_copy(update={"doc_type": best["doc_type"], "doc_type_confidence": round(best_score, 3),
                                       "fields": best_fields, "tables": _tables(doc, best)})
     except Exception as e:

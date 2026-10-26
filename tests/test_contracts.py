@@ -438,10 +438,27 @@ def t_occupancy(m):
     assert [x.rule_id for x in m.run_rules(APP, [old], [], None, rp, TODAY) if "occupancy" in x.rule_id] == ["R-PROV-occupancy_cert"]
 
 
+def t_fuzzy(m):
+    """WK22 fuzzy labels (OCR only): up to 2 errors on long labels, 1 on short, 0 below 4 chars; separators; date chars."""
+    assert m.label_matches("perod", "period") and m.label_matches("Date of lssue:", "Date of Issue")
+    assert m.label_matches("Valid Untl", "Valid Until") and not m.label_matches("Issued by", "Valid Until")
+    assert not m.label_matches("Na", "No") and not m.label_matches("Datum of Iss", "Date of Issue")    # 0 errors / 3 errors
+    assert m.repair_line("Certificate No:: FS/2025/1", ["Certificate No"]) == "Certificate No: FS/2025/1"
+    assert m.repair_line("Certifcate Na: FS/1", ["Certificate No"]) == "Certificate No: FS/1"
+    assert m.repair_line("No.= 138 Date: 20-07-2025", []) == "No.: 138 Date: 20-07-2025"
+    alts = ["Valid Until", "Valid up to", "Valid upto"]           # an exact label must never be swapped for a near one
+    assert m.repair_line("Valid Until: 19-07-2028", alts) == "Valid Until: 19-07-2028"
+    assert m.repair_line("Vaiid Untll: 19-07-2028", alts) == "Valid Until: 19-07-2028"
+    assert m.fix_date_chars("2O-ll-2025") == "20-11-2025" and m.fix_date_chars("09-Nov-2025") == "09-Nov-2025"
+    assert m.fix_date_chars("Office of the Chief Fire Officer") == "Office of the Chief Fire Officer"
+    from pramaan.classify_extract import _norm_value
+    assert _norm_value("2O-1l-2O25", "date")[0] == "2025-11-20"
+
+
 MODULE = {"signature": "forensics", "priority": "priority", "reuse": "reuse", "area": "rules", "issuer_webhook": "issuer_async", "retention": "audit", "masking": "privacy",
           "metadata": "metadata_forensics", "table_borderless": "classify_extract",
           "reuse_photo_strict": "reuse", "reference_sync": "schemas",
-          "audit_close": "audit", "occupancy": "rules"}   # test name -> module in pramaan/
+          "audit_close": "audit", "occupancy": "rules", "fuzzy": "fuzzy"}   # test name -> module in pramaan/
 
 
 TESTS = {"ingest": t_ingest, "classify_extract": t_classify_extract, "rules": t_rules, "crosscheck": t_crosscheck,
@@ -452,7 +469,7 @@ TESTS = {"ingest": t_ingest, "classify_extract": t_classify_extract, "rules": t_
          "metadata": t_metadata, "table_borderless": t_table_borderless,
          "reuse_photo_strict": t_reuse_photo_strict,
          "reference_sync": t_reference_sync, "audit_close": t_audit_close,
-         "occupancy": t_occupancy}
+         "occupancy": t_occupancy, "fuzzy": t_fuzzy}
 
 if __name__ == "__main__":
     want = sys.argv[1:] or list(TESTS)

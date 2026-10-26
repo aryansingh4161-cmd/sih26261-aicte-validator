@@ -29,15 +29,32 @@ def _pages(doc: DocumentRecord, max_pages: int = 3):
     return [(i + 1, render_page(doc.path, dpi=100, page=i)) for i in range(min(doc.pages, max_pages))]
 
 
+def ensemble_fn(predictors):
+    """WK22: average the models' heatmaps; the image score is computed from the average exactly as for one model."""
+    from .model.features import image_score
+
+    def predict(img):
+        prob = np.mean([p(img)[1] for p in predictors], axis=0)
+        return image_score(prob), prob
+    return predict
+
+
+def predictor(weights_path: str, mode: str = "single", weights2: str | None = None):
+    """mode single = model 1 only; ensemble = model 1 + model 2 (falls back to single if model 2 is missing)."""
+    from .model.eval_model import load, predict_fn
+    paths = [weights_path] + ([weights2] if mode == "ensemble" and weights2 and os.path.exists(weights2) else [])
+    key = "|".join(paths)
+    if key not in _CACHE:
+        fns = [predict_fn(load(p, "cpu"), "cpu") for p in paths]
+        _CACHE[key] = fns[0] if len(fns) == 1 else ensemble_fn(fns)
+    return _CACHE[key]
+
+
 def tamper_check(app_id: str, doc: DocumentRecord, weights_path: str = "data/models/tamper_unet.pt",
-                 threshold: float = 0.5) -> list[Finding]:
+                 threshold: float = 0.5, mode: str = "single", weights2: str | None = None) -> list[Finding]:
     if not doc.is_scanned or doc.pages == 0 or not available(weights_path):
         return []
-    import torch
-    from .model.eval_model import load, predict_fn
-    if weights_path not in _CACHE:
-        _CACHE[weights_path] = predict_fn(load(weights_path, "cpu"), "cpu")
-    predict = _CACHE[weights_path]
+    predict = predictor(weights_path, mode, weights2)
     out = []
     for page, img in _pages(doc):
         score, prob = predict(img)
