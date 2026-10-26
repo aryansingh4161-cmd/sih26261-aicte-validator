@@ -294,7 +294,34 @@ def t_geo():
     assert "MOCK" in hits["APP-23"][0].evidence[0].text
 
 
-TESTS = {"lod": t_lod, "resubmit": t_resubmit, "checklist": t_checklist, "queue": t_queue, "trust": t_trust, "seal": t_seal, "desk_page": t_desk_page, "yoy": t_yoy, "serial": t_serial, "verify_board": t_verify_board, "expiry": t_expiry, "feedback": t_feedback, "assign": t_assign, "export_case": t_export_case, "checks_pages": t_checks_pages, "geo": t_geo}
+def t_selfcheck():
+    from pramaan.audit import AuditLog
+    from pramaan.selfcheck import MARK, precheck, todo
+    results("APP-01")
+    with AuditLog(DB) as log:
+        n0 = len(log.rows())
+    work = os.path.join(TMP, "selfcheck")
+    r4 = precheck("data/demo/apps/APP-04.json", work, TODAY)
+    items = todo(r4, TODAY)
+    assert r4.notes[0] == MARK and any("Structural Stability Certificate is 4 years old: upload one issued after 2023-10-26" in i
+                                       for i in items), items
+    assert todo(precheck("data/demo/apps/APP-01.json", work, TODAY), TODAY) == ["Nothing to fix was found. You can submit."]
+    with AuditLog(DB) as log:
+        assert len(log.rows()) == n0                      # nothing reached the officer's audit log
+    assert os.path.exists(os.path.join(work, "selfcheck_audit.db"))
+
+
+def t_selfcheck_page():
+    at = _page("dashboard/pages/5_Institute_SelfCheck.py")
+    assert at.title[0].value == "Institute self-check" and "SELF-CHECK" in at.warning[0].value
+    sel = next(s for s in at.selectbox if s.label == "Application")
+    assert sorted(sel.options) == ["APP-02", "APP-19"], sel.options          # only its own Permanent Id
+    sel.set_value("APP-02").run()
+    next(b for b in at.button if b.label == "Run self-check").click().run()
+    assert not at.exception and any("Fire Safety Certificate missing" in m.value for m in at.markdown), [m.value for m in at.markdown]
+
+
+TESTS = {"lod": t_lod, "resubmit": t_resubmit, "checklist": t_checklist, "queue": t_queue, "trust": t_trust, "seal": t_seal, "desk_page": t_desk_page, "yoy": t_yoy, "serial": t_serial, "verify_board": t_verify_board, "expiry": t_expiry, "feedback": t_feedback, "assign": t_assign, "export_case": t_export_case, "checks_pages": t_checks_pages, "geo": t_geo, "selfcheck": t_selfcheck, "selfcheck_page": t_selfcheck_page}
 
 if __name__ == "__main__":
     want = sys.argv[1:] or list(TESTS)
