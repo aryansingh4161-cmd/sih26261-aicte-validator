@@ -10,7 +10,8 @@ import re
 from .i18n import t
 from .util import now_iso
 
-OUTBOX = os.environ.get("PRAMAAN_OUTBOX", os.path.join("data", "outbox"))
+def _box(outbox: str | None) -> str:
+    return outbox or os.environ.get("PRAMAAN_OUTBOX", os.path.join("data", "outbox"))       # read at call time (tests)
 TEMPLATES = {
     "expiry_reminder": ("Certificate expiring: {doc_type} ({app_id})",
                         "Your {doc_type} for application {app_id} expires on {expires} ({days} days). Please upload a renewed certificate."),
@@ -22,7 +23,7 @@ TEMPLATES = {
 
 def send(kind: str, to: str, data: dict, key: str | None = None, channel: str = "email", outbox: str | None = None,
          lang: str = "en") -> str:
-    box = outbox or OUTBOX
+    box = _box(outbox)
     os.makedirs(box, exist_ok=True)
     key = re.sub(r"[^A-Za-z0-9_.-]+", "_", key or f"{kind}-{data.get('app_id', '')}-{now_iso()}")
     path = os.path.join(box, f"{key}.json")
@@ -37,4 +38,4 @@ def send(kind: str, to: str, data: dict, key: str | None = None, channel: str = 
 
 
 def log(outbox: str | None = None) -> list[dict]:
-    return sorted((json.load(open(p)) for p in glob.glob(os.path.join(outbox or OUTBOX, "*.json"))), key=lambda r: r["created_at"])
+    return sorted((json.load(open(p)) for p in glob.glob(os.path.join(_box(outbox), "*.json"))), key=lambda r: r["created_at"])

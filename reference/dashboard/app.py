@@ -13,6 +13,7 @@ from PIL import Image, ImageDraw
 
 sys.path.insert(0, os.getcwd())
 from pramaan.audit import AuditLog  # noqa: E402
+from pramaan.outbox import send  # noqa: E402
 from pramaan.pipeline import run_application  # noqa: E402
 
 OUT, DB = "output", "output/audit.db"
@@ -150,6 +151,7 @@ elif st.button("Record decision"):
         st.error("Write a reason first. Every decision needs one.")
     else:
         log.append(user["id"], user["role"], f"decision: {decision}", app, {"comment": comment, "ai_lane": r["lane"]})
+        send("decision", f"institute of {app}", {"app_id": app, "decision": decision.lower()})   # WK23-20 MOCK outbox
         st.success("Decision recorded in the audit log.")
 ok, bad = log.verify_chain()
 st.caption(f"Audit chain: {'intact' if ok else f'BROKEN at row {bad}'} | head {log.head()[:16]}...")

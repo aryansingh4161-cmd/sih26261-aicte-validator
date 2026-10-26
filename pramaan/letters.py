@@ -92,7 +92,12 @@ def export_docx(text: str, path: str) -> str | None:
     return path
 
 
-def save_final(log, user: dict, app_id: str, text: str) -> str:
-    """The officer's final (possibly edited) text goes into the audit log; returns the audit row hash."""
-    return log.append(user["id"], user["role"], "letter of deficiency finalised", app_id,
-                      {"sha256": hashlib.sha256(text.encode()).hexdigest(), "text": text})
+def save_final(log, user: dict, app_id: str, text: str, outbox: str | None = None) -> str:
+    """The officer's final (possibly edited) text goes into the audit log (this issues the letter and starts the 7-day appeal
+    window, appeal.py) and a MOCK notification goes to the outbox; returns the audit row hash."""
+    from .outbox import send
+    h = log.append(user["id"], user["role"], "letter of deficiency finalised", app_id,
+                   {"sha256": hashlib.sha256(text.encode()).hexdigest(), "text": text})
+    send("lod_issued", f"institute of {app_id}", {"app_id": app_id, "issued_on": date.today().isoformat()},
+         key=f"lod-{app_id}-{h[:12]}", outbox=outbox)
+    return h

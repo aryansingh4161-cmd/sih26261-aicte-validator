@@ -10,6 +10,7 @@ import streamlit as st
 
 sys.path.insert(0, os.getcwd())
 from dashboard.ui import DB, OUT, manifests, results, rtl, sidebar, t  # noqa: E402
+from pramaan.appeal import status as appeal_status  # noqa: E402
 from pramaan.audit import AuditLog  # noqa: E402
 from pramaan.checklist import counts, tick  # noqa: E402
 from pramaan.evc_pack import evc_pack  # noqa: E402
@@ -64,14 +65,20 @@ with tab_app:
             st.dataframe([{t("Deficiency"): x["title"], t("Status"): t(x["status"])} for x in d["deficiencies"]], hide_index=True)
             st.dataframe([{t("Document"): x["slot"], t("Status"): t(x["status"])} for x in d["changed_documents"]], hide_index=True)
 
+    with AuditLog(DB) as log:
+        ap = appeal_status(log.rows(app_id), app_id, date.today())
+    locked = bool(ap and ap["state"] == "closed (read-only)")
+    if ap:
+        st.info(f"{t('Letter of Deficiency issued on')} {ap['issued_on']} — {t('appeal window')}: {t(ap['state'])}, "
+                f"{t('deadline')} {ap['deadline']} ({ap['days_left']} {t('days left')}). {ap['clause']}")
     st.subheader(t("Letter of Deficiency (draft)"))
     lod = build_lod(r, institute=m.get("declared", {}).get("institute_name", "[Institute name]"),
                     permanent_id=m.get("permanent_id", "[Permanent Id]"), lang=st.session_state.get("lang", "en"))
-    text = st.text_area(t("Edit the letter before export"), lod["text"], height=320, key=f"lod-{app_id}")
+    text = st.text_area(t("Edit the letter before export"), lod["text"], height=320, key=f"lod-{app_id}", disabled=locked)
     if lod["notes"]:
         st.caption(t("Internal notes (not sent to the institute)") + ": " + "; ".join(n["what"] for n in lod["notes"]))
     b1, b2, b3, b4 = st.columns(4)
-    if b1.button(t("Finalise letter (audit log)"), disabled=user["role"] != "scrutiny_officer"):
+    if b1.button(t("Finalise and issue letter (audit log + MOCK outbox)"), disabled=user["role"] != "scrutiny_officer" or locked):
         with AuditLog(DB) as log:
             st.success(t("Stored in the audit log") + f": {save_final(log, user, app_id, text)[:16]}...")
     with AuditLog(DB) as log:

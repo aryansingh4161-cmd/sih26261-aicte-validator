@@ -39,6 +39,9 @@ def approve_batch(log, user: dict, results: list[ApplicationResult], opened: set
     if missing:
         raise SpotCheckIncomplete(f"open these applications first: {', '.join(missing)}")
     reason = f"auto-cleared, spot-checked {len(sample)} of {len(ids)}"
+    from .outbox import send
+    for r in results:
+        send("decision", f"institute of {r.app_id}", {"app_id": r.app_id, "decision": "approve for next step"}, key=f"decision-{r.app_id}-{seed[:10]}")
     return [log.append(user["id"], user["role"], "decision: approve for next step (clear-queue batch)", r.app_id,
                        {"reason": reason, "spot_checked": sample, "result_audit_head": r.audit_head_hash, "advisory": True})
             for r in results]

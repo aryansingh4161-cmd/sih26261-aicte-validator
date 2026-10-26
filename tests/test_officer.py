@@ -13,6 +13,7 @@ from datetime import date
 TODAY = date(2026, 10, 26)
 TMP = tempfile.mkdtemp()
 DB, REUSE = os.path.join(TMP, "audit.db"), os.path.join(TMP, "reuse.db")
+os.environ["PRAMAAN_OUTBOX"] = os.path.join(TMP, "outbox")              # MOCK notifications stay in the test folder
 _RES: dict = {}
 
 
@@ -278,7 +279,6 @@ def t_export_case():
 
 def t_checks_pages():
     results(*[f"APP-{k:02d}" for k in range(1, 24)])
-    os.environ["PRAMAAN_OUTBOX"] = os.path.join(TMP, "outbox")
     at = _page("dashboard/pages/3_Checks.py")
     assert at.title[0].value == "Checks" and any("APP-22" in str(d.value) for d in at.dataframe), "serial table shows APP-22"
     at = _page("dashboard/pages/4_Calendar_Exports.py")
@@ -361,7 +361,24 @@ def t_analytics():
     assert any("Leadership view" in m.value for m in at.markdown), "leadership section rendered"
 
 
-TESTS = {"lod": t_lod, "resubmit": t_resubmit, "checklist": t_checklist, "queue": t_queue, "trust": t_trust, "seal": t_seal, "desk_page": t_desk_page, "yoy": t_yoy, "serial": t_serial, "verify_board": t_verify_board, "expiry": t_expiry, "feedback": t_feedback, "assign": t_assign, "export_case": t_export_case, "checks_pages": t_checks_pages, "geo": t_geo, "selfcheck": t_selfcheck, "selfcheck_page": t_selfcheck_page, "evc_pack": t_evc_pack, "analytics": t_analytics}
+def t_appeal_outbox():
+    from datetime import timedelta
+    from pramaan.appeal import status
+    from pramaan.outbox import log as outbox_log
+    rows = [{"app_id": "A", "action": "letter of deficiency finalised", "ts": "2026-10-20T10:00:00"}]
+    s1 = status(rows, "A", TODAY)
+    assert s1["deadline"] == "2026-10-27" and s1["days_left"] == 1 and s1["state"] == "open", s1
+    assert status(rows, "A", TODAY + timedelta(days=3))["state"] == "window closed"
+    rows.append({"app_id": "A", "action": "decision: Return for rectification", "ts": "2026-10-28T09:00:00"})
+    assert status(rows, "A", TODAY + timedelta(days=3))["state"] == "closed (read-only)" and status(rows, "B", TODAY) is None
+    t_lod(); t_queue()                                            # finalising an LoD and a batch approval both write MOCK records
+    box = outbox_log()
+    kinds = {r["kind"] for r in box}
+    assert {"lod_issued", "decision"} <= kinds and all(r["mock"] and r["channel"].endswith("(MOCK)") for r in box), kinds
+    assert any("within 7 days" in r["body"] for r in box if r["kind"] == "lod_issued")
+
+
+TESTS = {"lod": t_lod, "resubmit": t_resubmit, "checklist": t_checklist, "queue": t_queue, "trust": t_trust, "seal": t_seal, "desk_page": t_desk_page, "yoy": t_yoy, "serial": t_serial, "verify_board": t_verify_board, "expiry": t_expiry, "feedback": t_feedback, "assign": t_assign, "export_case": t_export_case, "checks_pages": t_checks_pages, "geo": t_geo, "selfcheck": t_selfcheck, "selfcheck_page": t_selfcheck_page, "evc_pack": t_evc_pack, "analytics": t_analytics, "appeal_outbox": t_appeal_outbox}
 
 if __name__ == "__main__":
     want = sys.argv[1:] or list(TESTS)
