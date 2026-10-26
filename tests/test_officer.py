@@ -154,7 +154,22 @@ def t_desk_page():
     assert any("1 of 1 deficiencies resolved" in i.value for i in at.info)
 
 
-TESTS = {"lod": t_lod, "resubmit": t_resubmit, "checklist": t_checklist, "queue": t_queue, "trust": t_trust, "seal": t_seal, "desk_page": t_desk_page}
+def t_yoy():
+    import json
+    from pramaan.schemas import Application
+    from pramaan.yoy import yoy_check
+    rs = results(*[f"APP-{k:02d}" for k in range(1, 21)])
+    hits = {r.app_id: [f.rule_id for f in r.findings if f.rule_id.startswith("X-YOY")] for r in rs}
+    assert hits["APP-20"] == ["X-YOY-INTAKE"], hits["APP-20"]
+    assert not any(v for a, v in hits.items() if a != "APP-20"), {a: v for a, v in hits.items() if v}
+    f = next(f for f in rs[-1].findings if f.rule_id == "X-YOY-INTAKE")
+    assert f.lane == "human_review" and "+50%" in f.reason, f.reason
+    m = json.load(open("data/demo/apps/APP-01.json")); rec = json.load(open("data/aicte_records.json"))[m["permanent_id"]]
+    app = Application(**{**m, "declared": {**m["declared"], "institute_name": "Completely Renamed Institute"}})
+    assert [x.rule_id for x in yoy_check(app, [], rec, {})] == ["X-YOY-NAME"]
+
+
+TESTS = {"lod": t_lod, "resubmit": t_resubmit, "checklist": t_checklist, "queue": t_queue, "trust": t_trust, "seal": t_seal, "desk_page": t_desk_page, "yoy": t_yoy}
 
 if __name__ == "__main__":
     want = sys.argv[1:] or list(TESTS)

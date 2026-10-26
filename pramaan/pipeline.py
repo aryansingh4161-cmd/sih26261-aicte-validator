@@ -24,6 +24,7 @@ from .photo_check import check_photos
 from .priority import score as priority_score
 from .report import build_report
 from .seal import seal_file
+from .yoy import yoy_check
 from .reuse import check_reuse
 from .rules import run_rules
 from .schemas import DOC_TYPES, Application, ApplicationResult, DocumentRecord, Evidence, Finding
@@ -133,6 +134,7 @@ def _run(log: AuditLog, manifest_path, out_dir, today, audit_db, records_path, s
     log.append(*SYSTEM, "rules applied", app.app_id, {"rulepack": rulepack, "sha256": sha256_file(rulepack), "today": today.isoformat()})
     with _step(timings, "crosscheck"):
         findings += run_crosscheck(app, docs, record, today)
+        findings += yoy_check(app, docs, record, st)                             # WK23-7
     reuse_db = reuse_db or os.path.join(os.path.dirname(audit_db) or ".", "reuse.db")
     with _step(timings, "reuse"):
         findings += check_reuse(app, docs, reuse_db)
