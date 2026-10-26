@@ -31,3 +31,8 @@ def due_date(result: ApplicationResult, assigned_on: date, settings: dict) -> da
 
 def my_queue(assignments: dict, officer_id: str, results: list[ApplicationResult]) -> list[ApplicationResult]:
     return sorted((r for r in results if assignments.get(r.app_id) == officer_id), key=lambda r: (-r.priority, r.app_id))
+
+
+def record_assignment(log, user: dict, app_id: str, officer: str, due: date | None = None) -> str:
+    """Audit row "case assigned" (WK25: the case timeline shows it)."""
+    return log.append(user["id"], user["role"], "case assigned", app_id, {"officer": officer, "due_by": due.isoformat() if due else None})
