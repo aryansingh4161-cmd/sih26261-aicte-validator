@@ -57,7 +57,34 @@ def t_search():
     assert delete_filter(db, "officer.nw", "fire expired here") and list_filters(db, "officer.nw") == []
 
 
-TESTS = {"case_timeline": t_case_timeline, "search": t_search}
+def t_notes():
+    import zipfile
+    from pramaan.audit import AuditLog
+    from pramaan.export_case import export_case
+    from pramaan.letters import build_lod
+    from pramaan.notes import add_note, list_notes, mentions_for
+    from pramaan.selfcheck import todo
+    r2, = results("APP-02")
+    secret = "Internal: the principal called twice; @officer.nw please check the fire NOC history. @nobody.here"
+    out = add_note(DB, "APP-02", {"id": "officer.demo", "role": "scrutiny_officer"}, secret, r2.findings[0].finding_id)
+    assert out["mentions"] == ["officer.nw"] and len(out["warnings"]) == 1, out                    # review focus 3
+    assert [n["text"] for n in list_notes(DB, "APP-02")][-1] == secret
+    assert any(n["note_id"] == out["note_id"] for n in mentions_for(DB, "officer.nw")) and not mentions_for(DB, "nobody.here")
+    with AuditLog(DB) as log:
+        row = [r for r in log.rows("APP-02") if r["action"] == "internal note"][-1]
+    assert str(out["note_id"]) in row["detail"] and "principal" not in row["detail"]                # audit holds a hash, not the text
+    assert "principal" not in build_lod(r2)["text"] and "principal" not in build_lod(r2)["html"]
+    assert not any("principal" in x for x in todo(r2, TODAY))
+    inst = export_case("APP-02", TMP, DB, zip_path=os.path.join(TMP, "APP-02_institute.zip"), institute_copy=True)
+    with zipfile.ZipFile(inst) as z:
+        assert "notes.json" not in z.namelist() and not any(b"principal" in z.read(n) for n in z.namelist())
+        assert b"internal note" not in z.read("audit_slice.json")
+    off = export_case("APP-02", TMP, DB, zip_path=os.path.join(TMP, "APP-02_officer.zip"))
+    with zipfile.ZipFile(off) as z:
+        assert b"principal" in z.read("notes.json")
+
+
+TESTS = {"case_timeline": t_case_timeline, "search": t_search, "notes": t_notes}
 
 if __name__ == "__main__":
     want = sys.argv[1:] or list(TESTS)

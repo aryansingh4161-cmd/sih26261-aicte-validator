@@ -51,7 +51,9 @@ def _crop(doc, ev) -> bytes | None:
 
 
 def export_case(app_id: str, out_dir: str = "output", audit_db: str = "output/audit.db", manifests_dir: str = "data/demo/apps",
-                zip_path: str | None = None) -> str:
+                zip_path: str | None = None, institute_copy: bool = False) -> str:
+    """institute_copy=True (WK25): for the institute; internal notes, their audit rows and officer feedback are left out.
+    The officer copy (default) also carries notes.json."""
     res = ApplicationResult.model_validate_json(open(os.path.join(out_dir, f"{app_id}.result.json")).read())
     man_p = os.path.join(manifests_dir, f"{app_id}.json")
     man = json.load(open(man_p)) if os.path.exists(man_p) else {}
@@ -60,10 +62,12 @@ def export_case(app_id: str, out_dir: str = "output", audit_db: str = "output/au
         rows = log.rows(app_id)
     final = [r for r in rows if r["action"] == "letter of deficiency finalised"]
     lod = json.loads(final[-1]["detail"]).get("text") if final else build_lod(res)["text"] + "\n(draft: no finalised letter in the audit log)"
+    if institute_copy:                                          # internal notes stay inside the office
+        rows = [r for r in rows if r["action"] != "internal note" and not r["action"].startswith("feedback")]
     decisions = [r for r in rows if r["role"] not in ("system", "external_source")]
     try:
         from .feedback import rows as fb_rows
-        feedback = [r for r in fb_rows(audit_db) if r["app_id"] == app_id]
+        feedback = [] if institute_copy else [r for r in fb_rows(audit_db) if r["app_id"] == app_id]
     except Exception:
         feedback = []
     docs = {d.doc_id: d for d in res.documents}
@@ -83,6 +87,9 @@ def export_case(app_id: str, out_dir: str = "output", audit_db: str = "output/au
         z.writestr("decisions.json", json.dumps({"officer_audit_rows": decisions, "feedback": feedback}, indent=2))
         z.writestr("audit_slice.json", json.dumps(rows, indent=2))
         z.writestr("VERIFY.txt", VERIFY)
+        if not institute_copy:
+            from .notes import list_notes
+            z.writestr("notes.json", json.dumps(list_notes(audit_db, app_id), indent=2))
         rep = os.path.join(out_dir, f"{app_id}.report.html")
         if os.path.exists(rep):
             z.write(rep, "report.html")
