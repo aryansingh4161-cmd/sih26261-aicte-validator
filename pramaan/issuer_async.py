@@ -27,6 +27,7 @@ from .issuer import load_records
 from .pipeline import _settings, _vfinding
 from .priority import score as priority_score
 from .report import build_report
+from .seal import seal_file
 from .schemas import VERIFICATION_METHODS, VERIFICATION_STATUSES, Application, ApplicationResult, CompareItem, VerificationResult
 from .triage import assign_lane, make_alerts
 from .util import now_iso, similarity
@@ -91,7 +92,7 @@ def _fold(log, res, app, app_id, v, vers, findings, records_path, out_dir, today
     head = log.append(*ACTOR, "observation", app_id, {"lane": lane, "findings": len(findings), "advisory": True, "priority": pr,
                                                       "recomputed_after": "asynchronous issuer reply"})
     res = res.model_copy(update={"priority": pr, "priority_reasons": why, "audit_head_hash": head})
-    build_report(res, out_dir)
+    seal_file(build_report(res, out_dir)["html"], app_id, log)
     return res
 
 

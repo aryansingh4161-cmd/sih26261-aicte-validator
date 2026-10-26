@@ -23,6 +23,7 @@ from .issuer import load_records, verify_document
 from .photo_check import check_photos
 from .priority import score as priority_score
 from .report import build_report
+from .seal import seal_file
 from .reuse import check_reuse
 from .rules import run_rules
 from .schemas import DOC_TYPES, Application, ApplicationResult, DocumentRecord, Evidence, Finding
@@ -159,7 +160,7 @@ def _run(log: AuditLog, manifest_path, out_dir, today, audit_db, records_path, s
                                                           "priority": pr, "priority_weights": "designed, assumption"})
     res = res.model_copy(update={"priority": pr, "priority_reasons": why, "audit_head_hash": head})
     with _step(timings, "report"):
-        build_report(res, out_dir)
+        seal_file(build_report(res, out_dir)["html"], app.app_id, log)       # WK23-6: QR seal recorded in the audit log
     return res
 
 

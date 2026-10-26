@@ -254,7 +254,7 @@ def t_issuer_webhook(m):
     v1 = next(v for v in r1.verifications if v.method == "issuer_portal")
     assert v1.status == "verified" and v1.mock and v1.source.startswith("MOCK ") and v1.payload_hash
     assert not any(a.kind == "pending_verification" for a in r1.alerts) and r1.lane == "clear"
-    log = AuditLog(db); rows = log.rows("APP-11")
+    log = AuditLog(db); rows = [x for x in log.rows("APP-11") if not x["action"].endswith("sealed")]   # WK23: seal row follows
     assert log.verify_chain() == (True, None) and r1.audit_head_hash == rows[-1]["hash"]
     assert any(x["action"] == "source response" and v1.payload_hash in x["detail"] for x in rows)
     n1 = len(log.rows())

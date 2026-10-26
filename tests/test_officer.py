@@ -105,7 +105,33 @@ def t_trust():
     assert app_score(r1)["score"] >= 90 and 0 <= a16["score"] <= 100
 
 
-TESTS = {"lod": t_lod, "resubmit": t_resubmit, "checklist": t_checklist, "queue": t_queue, "trust": t_trust}
+def t_seal():
+    import subprocess
+    from pramaan.audit import AuditLog
+    from pramaan.letters import build_lod
+    from pramaan.seal import seal_html, verify_sealed
+    results("APP-02")
+    path = os.path.join(TMP, "APP-02.report.html")
+    text = open(path, encoding="utf-8").read()
+    assert verify_sealed(text, DB).startswith("VALID: matches audit entry #"), verify_sealed(text, DB)
+    i = text.index("<body") + 10
+    changed = text[:i] + ("X" if text[i] != "X" else "Y") + text[i + 1:]                 # one byte changed
+    assert verify_sealed(changed, DB) == "ALTERED: content does not match its seal"
+    with AuditLog(DB) as log:                                                           # an LoD is sealed the same way
+        lod = seal_html(build_lod(results("APP-02")[0])["html"], "APP-02", log, kind="letter of deficiency")
+    assert verify_sealed(lod, DB).startswith("VALID") and "data:image/png;base64," in lod
+    other = os.path.join(TMP, "other_audit.db")                                         # review focus 4: no matching entry
+    with AuditLog(other) as log:
+        foreign = seal_html("<p>x</p>", "APP-02", log)
+    assert verify_sealed(foreign, DB) == "ALTERED: no matching audit entry"
+    assert verify_sealed("<p>no seal</p>", DB) == "ALTERED: no seal found"
+    open(os.path.join(TMP, "changed.html"), "w", encoding="utf-8").write(changed)
+    cli = subprocess.run([sys.executable, "-m", "tools.verify_report", os.path.join(TMP, "changed.html"), "--audit", DB],
+                         capture_output=True, text=True)
+    assert cli.returncode == 1 and cli.stdout.startswith("ALTERED"), cli.stdout
+
+
+TESTS = {"lod": t_lod, "resubmit": t_resubmit, "checklist": t_checklist, "queue": t_queue, "trust": t_trust, "seal": t_seal}
 
 if __name__ == "__main__":
     want = sys.argv[1:] or list(TESTS)
