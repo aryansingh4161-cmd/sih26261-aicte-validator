@@ -236,7 +236,26 @@ def t_feedback():
         pass
 
 
-TESTS = {"lod": t_lod, "resubmit": t_resubmit, "checklist": t_checklist, "queue": t_queue, "trust": t_trust, "seal": t_seal, "desk_page": t_desk_page, "yoy": t_yoy, "serial": t_serial, "verify_board": t_verify_board, "expiry": t_expiry, "feedback": t_feedback}
+def t_assign():
+    import json, yaml
+    from pramaan.assign import assign, due_date, my_queue
+    rs = results(*[f"APP-{k:02d}" for k in range(1, 24)])
+    mans = {r.app_id: json.load(open(f"data/demo/apps/{r.app_id}.json")) for r in rs}
+    users = yaml.safe_load(open("config/users.yaml"))["users"]
+    a = assign(rs, mans, users)
+    region_of = {u["id"]: set(u.get("regions", [])) for u in users}
+    assert all(mans[x]["declared"]["region"] in region_of[o] for x, o in a.items() if o != "unassigned"), a
+    west = sorted((r for r in rs if mans[r.app_id]["declared"]["region"] == "West"), key=lambda r: (-r.priority, r.app_id))
+    if len(west) >= 2:                                               # two West officers alternate, highest priority first
+        assert a[west[0].app_id] == "officer.west" and a[west[1].app_id] == "officer.west2", [(r.app_id, a[r.app_id]) for r in west]
+    q = my_queue(a, "officer.nw", rs)
+    assert [r.priority for r in q] == sorted([r.priority for r in q], reverse=True)
+    r = rs[0]
+    assert (due_date(r, TODAY, {"assignment_sla_days": {r.lane: 3}}) - TODAY).days == 3
+    assert assign(rs, mans, [u for u in users if u["id"] != "officer.central"])[next(x for x in a if mans[x]["declared"]["region"] == "Central")] == "unassigned"
+
+
+TESTS = {"lod": t_lod, "resubmit": t_resubmit, "checklist": t_checklist, "queue": t_queue, "trust": t_trust, "seal": t_seal, "desk_page": t_desk_page, "yoy": t_yoy, "serial": t_serial, "verify_board": t_verify_board, "expiry": t_expiry, "feedback": t_feedback, "assign": t_assign}
 
 if __name__ == "__main__":
     want = sys.argv[1:] or list(TESTS)

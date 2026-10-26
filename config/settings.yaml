@@ -27,3 +27,5 @@ yoy: {intake_up_pct: 25, area_up_min_pct: 5, name_similarity: 0.85, address_simi
 serial: {text_min: 0.95, days: 30, number_gap: 20, doc_types: [structural_cert, fire_cert, occupancy_cert]}
 # WK23-10 expiry reminders: days before expiry (ASSUMPTION). Reminders go to the MOCK outbox data/outbox/ (no real email/SMS).
 reminder_days: [60, 30, 7]
+# WK23-12 workload assignment: officer SLA in days from assignment, by lane (ASSUMPTION)
+assignment_sla_days: {human_review: 5, return_for_rectification: 3, clear: 2, info: 7}
