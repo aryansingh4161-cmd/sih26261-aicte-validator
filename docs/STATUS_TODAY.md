@@ -238,3 +238,10 @@
 - Numbers (measured, synthetic): APP-20 X-YOY-INTAKE (+50% intake, +0% area); APP-22 X-SERIAL vs APP-21 (similarity 0.998), 0 false matches on the other 22 apps; 44 expiries, 2 overdue; assignment se 10 / nw 5 / central 5 / west 2 / west2 1.
 - run_eval (demo): recall 0.9714 (n=35; only X-GEO missing, built in Part 3), 0 unexpected, lanes 23/23.
 - Screenshots: out/deck/wk23_8, 9, 10, 11, 12, 13.png.
+
+## WK23 Part 3 - institute side, committee, leadership (done) + WK24 close
+- Built: selfcheck.py + pages/5_Institute_SelfCheck.py (role institute), evc_pack.py (+ Desk button), analytics.py + Analytics leadership section, i18n.py engine (IndicTrans2 dist-200M offline; static tables hi/bn/ta/mr; other 8 on-demand) + tools/build_translations.py + tools/i18n_timing.py, geo.py (X-GEO, MOCK geocoder, APP-23), appeal.py (APH 1.11 a. 7 days), outbox hooks (LoD issue, decisions, reminders).
+- Tests (measured): test_contracts 22/22 PASS; test_officer 22/22 PASS; test_synth PASS.
+- run_eval (measured, synthetic): before WK23 (WK21, 18 apps): field 0.9977 (n=2220), recall 1.0 (n=30), 0 unexpected, lanes 18/18, 0.70 s/app. After (23 apps): field 0.9977 (n=2220), type 1.0 (n=420), recall 1.0 (n=35), 0 unexpected, lanes 23/23, 0.63 s/app.
+- Translation timing (measured, Desk page, Hindi): cold 36.1 s, warm 1.02 s, English 0.68 s. Quality not human-reviewed.
+- Blocked: WK22 Part B (model 2 missing), Part C held-out test (EOA7+ letters + answer key missing).
