@@ -115,7 +115,23 @@ def t_rule_admin():
     assert cov["total"] == 59 and cov["covered"] == 8, cov
 
 
-TESTS = {"case_timeline": t_case_timeline, "search": t_search, "notes": t_notes, "rule_admin": t_rule_admin}
+def t_policy_docs():
+    import re
+    readme = open("README.md", encoding="utf-8").read()
+    assert not readme.startswith("pbpaste") and len(readme) > 1000
+    for d in ("PRIVACY", "TERMS", "ACCESSIBILITY"):
+        txt = open(f"docs/{d}.md", encoding="utf-8").read()
+        assert f"docs/{d}.md" in readme, d
+        assert not re.search(r"\b(reject\w*|forged|fraud\w*)\b", txt, re.I), d
+        assert "to be filled in" in txt, d                                         # contact placeholder
+    priv = open("docs/PRIVACY.md", encoding="utf-8").read()
+    assert "designed with DPDP Act 2023 principles in mind" in priv
+    assert not re.search(r"\b(compliant|complies|certified|GDPR|section \d+)\b", priv, re.I)     # no other legal claims
+    for word in ("offline", "MOCK", "retention", "access_log_export", "consent", "officer decides", "false alarm"):
+        assert word.lower() in priv.lower(), word
+
+
+TESTS = {"case_timeline": t_case_timeline, "search": t_search, "notes": t_notes, "rule_admin": t_rule_admin, "policy_docs": t_policy_docs}
 
 if __name__ == "__main__":
     want = sys.argv[1:] or list(TESTS)

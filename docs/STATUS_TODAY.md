@@ -257,3 +257,4 @@
 - WK25-22: search.py (ranked AND search, fuzzy names, saved_filters table, CLI). Test PASS.
 - WK25-23: notes.py (notes table, @mentions, hashed audit rows) + export_case(institute_copy=True). Test PASS.
 - WK25-24: rule_admin.py (check_clause vs local Handbook PDF, propose/apply with temp copy + contract test, version, audit, coverage), config/rule_coverage.yaml (partial: 8 of 59 rows mapped; team sheet pending), rule pack gains `version: 1`, tests.test_contracts t_rules reads PRAMAAN_RULEPACK. All 7 rule-pack clauses verified word for word. Test PASS.
+- WK25-25: docs/PRIVACY.md, TERMS.md, ACCESSIBILITY.md; README.md restored (from README_V1.md + header + links). Test PASS.
