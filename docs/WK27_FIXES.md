@@ -1,6 +1,7 @@
 # WK27 fixes: one row per fix, worked top to bottom
 Result (measured, 27 Oct): tools/wk27_check.py 56 of 56 checks PASS (28 rows x English and Hindi) on the demo build;
-tests/test_web_flows.py 4 of 4 PASS on the live stack. Walkthrough screenshots: out/review/wk27/walk_<lang>_<nn>_<step>.png.
+tests/test_web_flows.py 4 of 4 PASS on the live stack. The same 56 checks PASS on the deployed site
+(https://aryansingh4161-cmd.github.io/sih26261-aicte-validator/). Walkthrough screenshots: out/review/wk27/walk_<lang>_<nn>_<step>.png.
 
 A row is **verified** only when a Playwright screenshot in English and Hindi (out/review/wk27/<ID>_en.png, <ID>_hi.png) shows the
 acceptance check passing, or a Playwright test asserts it (tests/test_web_flows.py live, tools/wk27_check.py demo build).
@@ -9,7 +10,7 @@ acceptance check passing, or a Playwright test asserts it (tests/test_web_flows.
 |---|---|---|---|---|---|
 | A1 | Logo (rail) and wordmark (top bar) go to Home | Shell.tsx | From /calendar, clicking the logo and the wordmark lands on #/ (my queue) | verified | out/review/wk27/A1_en.png, A1_hi.png; tools/wk27_check.py A1 PASS en + hi |
 | A2 | Rail expand / collapse toggle at the bottom, remembered | Shell.tsx, components.css | Toggle widens the rail to about 220 px with icon + full name; a reload keeps the choice | verified | out/review/wk27/A2_en.png, A2_hi.png; tools/wk27_check.py A2 PASS en + hi |
-| A3 | Dropdowns: menu max 320 px scrolling inside, flips up, value never wraps | Dropdown (Home.tsx), Shell LanguageMenu, AssignMenu | Sign-in language menu opens upward with its own scroll, page scrollTop stays 0; dropdown value is one line with a tooltip | verified | out/review/wk27/A3_en.png, A3_hi.png; tools/wk27_check.py A3 PASS en + hi |
+| A3 | Dropdowns: menu max 320 px scrolling inside, flips up, value never wraps | Dropdown (components/ui.tsx), Shell LanguageMenu, AssignMenu, Evidence DocSwitcher | Sign-in language menu opens upward with its own scroll, page scrollTop stays 0; dropdown value is one line with a tooltip | verified | out/review/wk27/A3_en.png, A3_hi.png; tools/wk27_check.py A3 PASS en + hi |
 | A4 | Sentence case; no raw internal names; no "derived" hash | case.tsx, More.tsx, api/views_case.py | No "lane human_review", "officer.se" or "derived" on screen; timeline steps and table cells start with a capital, rest lower case (Handbook names excepted) | verified | out/review/wk27/A4_en.png, A4_hi.png; tools/wk27_check.py A4 PASS en + hi |
 | A5 | "Extension of Approval 2026-27" everywhere | api/ctx.py (display year), views, actions | Case header, letter subject, F. No. and letters list show 2026-27; no 2027-28 in any snapshot view | verified | out/review/wk27/A5_en.png, A5_hi.png; tools/wk27_check.py A5 PASS en + hi |
 | A6 | Hindi first-class: no label wraps; layout same as English | components.css, base.css | Script check: no button, chip, tab, dropdown, table header or rail label renders on 2 lines in Hindi on any route; Home in Hindi matches the English layout | verified | out/review/wk27/A6_en.png, A6_hi.png; tools/wk27_check.py A6 PASS en + hi; layout en vs hi compared box by box |
@@ -23,10 +24,10 @@ acceptance check passing, or a Playwright test asserts it (tests/test_web_flows.
 | D2 | Evidence tab: viewer + one issues panel | Evidence.tsx, case.tsx, api/views_case.py | Two columns; document switcher with 1 of n and prev/next; sections This document / Photos and metadata / Whole file; numbered issues jump to their box; toolbar switch, zoom, pan, page; heatmap inactive on text PDFs with tooltip; numbered boxes; magnifier callout; clean page green outline + chip; APP-17 photo findings under a listed photo item with an orange icon | verified | out/review/wk27/D2_en.png, D2_hi.png; tools/wk27_check.py D2 PASS en + hi; also D2b (APP-17 photo), D2c (clean page) |
 | D3 | Correct carries into the letter | actions.ts, LetterEditor.tsx | Correct ticks the item in the Letter of Deficiency; False alarm unticks it; demo (localStorage) and live (feedback API) | verified | out/review/wk27/D3_en.png, D3_hi.png; tools/wk27_check.py D3 PASS en + hi; live: tests/test_web_flows.py photo_correct_letter |
 | D4 | Letter editor: "Deficiencies in this letter", all tickable, no Handbook quotes box, seal rule | LetterEditor.tsx, api/views_case2.py | Title + subline; every item tickable and remembered; no "Handbook quotes" text; Seal enabled with 1+ ticked, tooltip otherwise; Playwright APP-17: Correct -> ticked -> sealed | verified | out/review/wk27/D4_en.png, D4_hi.png; tools/wk27_check.py D4 PASS en + hi; live: tests/test_web_flows.py photo_correct_letter |
-| D5 | Case ZIP works on the demo site | tools/export_snapshot.py, Case.tsx | Demo Case ZIP button downloads snapshot/zips/<APP>.zip (officer copy); total size reported | verified | out/review/wk27/D5_en.png, D5_hi.png; tools/wk27_check.py D5 PASS en + hi |
+| D5 | Case ZIP works on the demo site | tools/export_snapshot.py, Case.tsx | Demo Case ZIP button downloads snapshot/zips/<APP>.zip (officer copy); total size reported | verified | out/review/wk27/D5_en.png, D5_hi.png; tools/wk27_check.py D5 PASS en + hi; 23 ZIPs = 1.6 MB, snapshot 20 MB in all (was 18 MB), no image compression needed |
 | E1 | Analytics "Chart / Table" segmented switch next to Export CSV, same height | Analytics.tsx | Switch height = Export CSV height; table view toggles | verified | out/review/wk27/E1_en.png, E1_hi.png; tools/wk27_check.py E1 PASS en + hi |
 | E2 | Hide "marked false alarm" % under 20 marks | api/views_global.py | With fewer than 20 officer marks the KPI reads "Not enough marks yet" | verified | out/review/wk27/E2_en.png, E2_hi.png; tools/wk27_check.py E2 PASS en + hi |
-| F1 | Demo rebuilt and live | GitHub Pages | Live URL serves the new build (C1 empty state visible) | todo | |
+| F1 | Demo rebuilt and live | GitHub Pages | Live URL serves the new build (C1 empty state visible) | verified | Pages run 40487804102 (7f9d041) success; tools/wk27_check.py --base https://aryansingh4161-cmd.github.io/sih26261-aicte-validator 56 of 56 PASS; out/review/wk27/F1_en.png, F1_hi.png (live Home) |
 
 ## Walkthrough rows (G)
 | ID | What | Where | Acceptance check | Status | Evidence |
@@ -54,4 +55,16 @@ acceptance check passing, or a Playwright test asserts it (tests/test_web_flows.
   never changes when the officer switches documents. Cross-check findings sit under "Whole file" even when they point at one page;
   clicking them still opens that page and box.
 - D3: a tick the officer sets by hand is kept (browser storage, both modes); a later Correct / False alarm mark on that finding resets
-  the tick so the letter follows the mark.
+  the tick so the letter follows the mark. In live mode the mark goes to the feedback API and is also kept in the browser, so the
+  letter follows it at once (before the case view is fetched again).
+
+## Not fixed here (bigger items)
+- The synthetic document page images print "2027-28" inside the documents (A5 fixes every screen, letter and file number around them).
+  Regenerating the synthetic set would change run_eval's inputs.
+- Demo mode seals with a hash kept in the browser; the QR seal, outbox, audit block and appeal window need the live server (said on
+  screen).
+- Hindi: UI words are reviewed; engine text inside findings and letters (reasons, deficiency wording) is IndicTrans2 output, read on
+  the walkthrough screens but not reviewed line by line by a Hindi-speaking officer. Bengali, Tamil and Marathi got the new strings by
+  machine translation only (not reviewed; not worse than before).
+- Two engine titles still carry document names in Handbook capitals ("Fire Safety Certificate expired"); see the A4 decision.
+

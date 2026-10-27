@@ -58,6 +58,7 @@ def go(pg, base, route, ms=500):
 
 
 def shot(pg, fid, lang):
+    global OUT
     os.makedirs(OUT, exist_ok=True)
     p = f"{OUT}/{fid}_{lang}.png"
     pg.screenshot(path=p)
@@ -567,6 +568,8 @@ def run(base: str, only: set | None, langs: list[str]) -> dict:
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--base", default="http://127.0.0.1:5173"); ap.add_argument("--only", default=""); ap.add_argument("--langs", default="en,hi")
+    ap.add_argument("--out", default=OUT, help="where the screenshots go (e.g. a scratch folder when checking the live site)")
     a = ap.parse_args()
+    OUT = a.out
     r = run(a.base, set(a.only.split(",")) - {""} or None, a.langs.split(","))
     print(f"{sum(not v for v in r.values())} of {len(r)} passed")
