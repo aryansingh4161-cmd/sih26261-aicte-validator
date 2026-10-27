@@ -12,7 +12,7 @@ acceptance check passing, or a Playwright test asserts it (tests/test_web_flows.
 | A2 | Rail expand / collapse toggle at the bottom, remembered | Shell.tsx, components.css | Toggle widens the rail to about 220 px with icon + full name; a reload keeps the choice | verified | out/review/wk27/A2_en.png, A2_hi.png; tools/wk27_check.py A2 PASS en + hi |
 | A3 | Dropdowns: menu max 320 px scrolling inside, flips up, value never wraps | Dropdown (components/ui.tsx), Shell LanguageMenu, AssignMenu, Evidence DocSwitcher | Sign-in language menu opens upward with its own scroll, page scrollTop stays 0; dropdown value is one line with a tooltip | verified | out/review/wk27/A3_en.png, A3_hi.png; tools/wk27_check.py A3 PASS en + hi |
 | A4 | Sentence case; no raw internal names; no "derived" hash | case.tsx, More.tsx, api/views_case.py | No "lane human_review", "officer.se" or "derived" on screen; timeline steps and table cells start with a capital, rest lower case (Handbook names excepted) | verified | out/review/wk27/A4_en.png, A4_hi.png; tools/wk27_check.py A4 PASS en + hi |
-| A5 | "Extension of Approval 2026-27" everywhere | api/ctx.py (display year), views, actions | Case header, letter subject, F. No. and letters list show 2026-27; no 2027-28 in any snapshot view | verified | out/review/wk27/A5_en.png, A5_hi.png; tools/wk27_check.py A5 PASS en + hi |
+| A5 | Application year as filed: "Extension of Approval 2027-28" (reverted from the 2026-27 display on request) | config/settings.yaml academic_year_shown = {} | Case header, letter subject and F. No. show 2027-28, matching the documents; the previous Extension of Approval letter (supporting document) shows 2026-27 | verified | out/review/wk27/A5_en.png, A5_hi.png, A5b_en.png, A5b_hi.png (previous letter preview); tools/wk27_check.py A5 PASS en + hi; tests/test_api.py |
 | A6 | Hindi first-class: no label wraps; layout same as English | components.css, base.css | Script check: no button, chip, tab, dropdown, table header or rail label renders on 2 lines in Hindi on any route; Home in Hindi matches the English layout | verified | out/review/wk27/A6_en.png, A6_hi.png; tools/wk27_check.py A6 PASS en + hi; layout en vs hi compared box by box |
 | A7 | One tooltip for unavailable controls | ui.tsx (Unavailable) | Hover or focus on an unavailable control shows the reason (heatmap on a text PDF, Seal with nothing ticked) | verified | out/review/wk27/A7_en.png, A7_hi.png; tools/wk27_check.py A7 PASS en + hi |
 | B1 | Sign-in animation reads as scanning | SignIn.tsx, components.css | Corner brackets, beam with a trailing band, lines turn to read ink behind the beam, margin ticks, boxes appear when the beam reaches them; 4 steps and timings kept; off under reduced motion | verified | out/review/wk27/B1_en.png, B1_hi.png; tools/wk27_check.py B1 PASS en + hi; reduced motion checked |
@@ -47,9 +47,9 @@ acceptance check passing, or a Playwright test asserts it (tests/test_web_flows.
   Structural Stability Certificate, Occupancy / Completion Certificate, University NOC Format 2), like the other Handbook names; the
   engine's tests pin that wording. UI labels of the same documents (document switcher, tabs) are in sentence case. Table headers and
   calendar weekday labels are now sentence case too (they were upper case by CSS); the gold eyebrows stay upper case by design.
-- A5: the synthetic files are generated for 2027-28 (data/demo and the page images). The screens, letters, F. No. and file names show
-  2026-27 through `academic_year_shown` in config/settings.yaml (display only). The page images of the synthetic documents still
-  print 2027-28 inside the document itself; regenerating the synthetic set would change run_eval inputs, so it is left as is.
+- A5 (revised 27 Oct): the screens show the application year as filed, 2027-28, so the case header, letter subject and F. No. match
+  the documents. The previous Extension of Approval letter stays 2026-27: it is a supporting document from the year before.
+  `academic_year_shown` in config/settings.yaml is empty; a {"filed": "shown"} mapping there would change the display only.
 - C4: "current" is the first step not done yet (the open appeal window when there is one, else the letter, else the decision).
 - D2: issues are numbered once for the whole file (documents in order, then photos, then whole-file items), so the number on a box
   never changes when the officer switches documents. Cross-check findings sit under "Whole file" even when they point at one page;
@@ -59,8 +59,6 @@ acceptance check passing, or a Playwright test asserts it (tests/test_web_flows.
   letter follows it at once (before the case view is fetched again).
 
 ## Not fixed here (bigger items)
-- The synthetic document page images print "2027-28" inside the documents (A5 fixes every screen, letter and file number around them).
-  Regenerating the synthetic set would change run_eval's inputs.
 - Demo mode seals with a hash kept in the browser; the QR seal, outbox, audit block and appeal window need the live server (said on
   screen).
 - Hindi: UI words are reviewed; engine text inside findings and letters (reasons, deficiency wording) is IndicTrans2 output, read on

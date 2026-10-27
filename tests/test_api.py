@@ -47,12 +47,15 @@ def t_reads():
         ok(f"/api/cases/{a}/notes")
         lt = ok(f"/api/cases/{a}/letter").json()
         assert "text" in lt and {d["finding_id"] for d in lt["deficiencies"]} == {i["finding_id"] for i in lt["items"]}   # every item drafted (WK27 D4)
-        assert "2026-27" in lt["header"]["subject"] and "2027-28" not in str(lt)                                          # WK27 A5
+        assert lt["header"]["subject"].endswith("2027-28") and "/2027-28/" in lt["header"]["file_no"]                       # application year as filed
         assert all(e["actor"] and "." not in e["actor"] and "lane " not in e["note"] for e in cs["timeline"])             # WK27 A4
         ok(f"/api/cases/{a}/evc")
         d = cs["documents"][0]
         img = ok(d["page_urls"][0])
         assert img.headers["content-type"] == "image/png" and img.content[:4] == b"\x89PNG"
+    assert ok("/api/cases/APP-07").json()["academic_year"] == "2027-28"
+    prev = ok("/api/cases/APP-07/sources/0/preview").json()                      # the previous EoA letter is a supporting document: 2026-27
+    assert any(k["v"].startswith("2026-27") for k in prev["kv"] if k["k"] == "Academic year"), prev["kv"]
     assert ok("/api/cases/APP-19/resubmission").json()["available"]
     c17 = ok("/api/cases/APP-17").json()                                         # WK27 D2: photos are documents, photo findings sit on them
     photos = {d["doc_id"] for d in c17["documents"] if d["kind"] == "photo"}

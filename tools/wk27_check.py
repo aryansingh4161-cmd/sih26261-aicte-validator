@@ -160,14 +160,19 @@ def a4(pg, base, lang):
 
 
 def a5(pg, base, lang):
+    """Application year as filed (2027-28) in the case header, letter subject and F. No.; the previous EoA letter stays 2026-27."""
     bad = []
-    for route, sel in (("/case/APP-07", ".casehead"), ("/case/APP-03/letter", ".letter-paper"), ("/letters", "main"), ("/?file=APP-07", "main")):
+    for route, sel in (("/case/APP-07", ".casehead"), ("/case/APP-03/letter", ".letter-paper")):
         go(pg, base, route)
         txt = pg.locator(sel).first.inner_text()
-        if "2027-28" in txt: bad.append(f"{route}: 2027-28 on screen")
-        if route != "/letters" and route != "/?file=APP-07" and "2026-27" not in txt: bad.append(f"{route}: 2026-27 missing")
-    go(pg, base, "/case/APP-03/letter")
+        if "2027-28" not in txt: bad.append(f"{route}: 2027-28 missing")
+        if "2026-27" in txt: bad.append(f"{route}: 2026-27 shown as the application year")
+    if "/2027-28/" not in pg.locator(".letter-paper mark").first.inner_text(): bad.append("F. No. year")
     shot(pg, "A5", lang)
+    go(pg, base, "/case/APP-07/sources")
+    pg.locator("tbody tr").first.get_by_role("button", name=tr("Preview", lang)).click(); pg.wait_for_timeout(1200)
+    if "2026-27" not in pg.locator(".drawer").inner_text(): bad.append("previous EoA letter year 2026-27 missing in the preview")
+    shot(pg, "A5b", lang)
     return bad
 
 
