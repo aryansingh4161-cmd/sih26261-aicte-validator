@@ -92,7 +92,7 @@ export function LetterEditor({ c }: { c: Case }) {
                 );
               })}
               {v.data && <div className="infobox"><b>{t("Handbook quotes")}</b>
-                <p>{t("Every quote is matched word for word against the Handbook before it can go in a letter.")} {v.data.quotes.found} {t("of")} {v.data.quotes.total} {t("Handbook quotes used in the checks match")} ({t("measured")}).</p></div>}
+                <p>{t("Every quote is checked word for word against the Handbook before it can go in a letter.")}</p></div>}
               <div className="infobox plain"><b><Icon name="verified_user" style={{ color: "var(--brand)" }} /> {t("What \"Seal and issue\" does")}</b>
                 <p>{t("Adds a hash and a QR code, saves the letter to the outbox, writes an audit block, and starts the 7-day appeal window. A sealed letter cannot be edited.")}</p></div>
             </>
