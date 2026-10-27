@@ -14,8 +14,7 @@ import { FindingCard } from "../../components/case";
 type Issue = { f: Finding; n: number; doc: string | null; page: number; box: Box | null };
 
 const ZOOMS = [0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3];
-const CALLOUT = 196;          // magnifier diameter (px)
-const MAG = 2.5;              // magnifier enlargement
+const MAG = 3;
 
 function issuesOf(c: Case): Issue[] {
   const order = new Map(c.documents.map((d, i) => [d.doc_id, i]));
@@ -125,6 +124,7 @@ function Stage({ doc, page, issues, selected, heat, heatUrl, onSelect, toolbar }
   const [width, setWidth] = useState(600);
   const [aspect, setAspect] = useState(1.414);
   const [zoom, setZoom] = useState(1);
+  const [, setScrollTick] = useState(0);
   const [broken, setBroken] = useState(false);
   const drag = useRef<{ x: number; y: number; l: number; t: number } | null>(null);
   useLayoutEffect(() => {
@@ -146,17 +146,13 @@ function Stage({ doc, page, issues, selected, heat, heatUrl, onSelect, toolbar }
     return () => el.removeEventListener("wheel", w);
   }, []);
   const callout = !!selected?.box && !heat;
-  const fit = Math.max(260, Math.min(720, width - 48 - (callout ? CALLOUT + 72 : 0)));
+  const detailWidth = callout ? Math.min(560, Math.max(1, window.innerWidth - 32)) : 0;
+  const fit = Math.max(260, Math.min(720, width - 48));
   const W = Math.round(fit * zoom), H = Math.round(W * aspect);
   const src = doc?.page_urls[page - 1];
   const clean = !issues.length && !broken && !!src;
-  useEffect(() => {                                              // bring the selected box into view
-    if (!selected?.box || !wrap.current) return;
-    const el = wrap.current, b = selected.box;
-    el.scrollTo({ left: Math.max(0, b.x0 * W - 60), top: Math.max(0, b.y0 * H - 120), behavior: "smooth" });
-  }, [selected, W, H]);
   const down = (e: RPointerEvent) => {
-    if (zoom <= 1 || !wrap.current || (e.target as HTMLElement).closest("button")) return;
+    if (zoom <= 1 || !wrap.current || (e.target as HTMLElement).closest("button, .evidence-detail")) return;
     drag.current = { x: e.clientX, y: e.clientY, l: wrap.current.scrollLeft, t: wrap.current.scrollTop };
     wrap.current.setPointerCapture(e.pointerId);
   };
@@ -174,23 +170,35 @@ function Stage({ doc, page, issues, selected, heat, heatUrl, onSelect, toolbar }
       <button className="btn" onClick={() => setZoom(1)} title={t("Fit the page to the viewer")}>{t("Fit")}</button>
     </span>
   );
-  // magnifier geometry (stage coordinates)
+  // The side view contains only the selected evidence box and keeps its aspect ratio.
   const PAD = 24;
-  let mag = null as null | { cx: number; cy: number; bx: number; by0: number; by1: number; bgx: number; bgy: number };
+  const imageW = W - 2, imageH = H - 2;
+  let mag = null as null | { left: number; top: number; width: number; height: number; viewWidth: number; viewHeight: number;
+    imageLeft: number; imageTop: number; scrollable: boolean; panelWidth: number };
   if (callout && selected?.box) {
     const b = selected.box;
-    const bx = PAD + b.x1 * W, by0 = PAD + b.y0 * H, by1 = PAD + b.y1 * H;
-    const cx = PAD + W + 48 + CALLOUT / 2;
-    const cy = Math.min(Math.max(PAD + CALLOUT / 2, (by0 + by1) / 2), PAD + Math.max(H, CALLOUT + 40) - CALLOUT / 2 - 30);
-    const mx = ((b.x0 + b.x1) / 2) * W * MAG, my = ((b.y0 + b.y1) / 2) * H * MAG;
-    mag = { cx, cy, bx, by0, by1, bgx: CALLOUT / 2 - mx, bgy: CALLOUT / 2 - my };
+    const boxW = Math.max(1, (b.x1 - b.x0) * imageW), boxH = Math.max(1, (b.y1 - b.y0) * imageH);
+    const cropW = boxW * MAG, cropH = boxH * MAG;
+    const rect = wrap.current?.getBoundingClientRect();
+    const panelWidth = detailWidth;
+    const viewWidth = Math.min(cropW, Math.max(1, panelWidth - 18));
+    const viewHeight = Math.min(cropH, 360);
+    const rightSide = (rect?.right ?? width) + 12;
+    const left = rightSide + panelWidth <= window.innerWidth - 8
+      ? rightSide : Math.max(8, Math.min(window.innerWidth - panelWidth - 8, (rect?.right ?? width) - panelWidth - 12));
+    const top = Math.max(8, Math.min(window.innerHeight - viewHeight - 80, (rect?.top ?? 0) + 12));
+    mag = { left, top, width: cropW, height: cropH,
+      viewWidth, viewHeight, panelWidth,
+      imageLeft: -b.x0 * imageW * MAG, imageTop: -b.y0 * imageH * MAG,
+      scrollable: cropW > viewWidth || cropH > viewHeight };
   }
   return (
     <>
       {toolbar(zoomUi)}
-      <div ref={wrap} className={"stage" + (zoom > 1 ? " pan" : "")} onPointerDown={down} onPointerMove={move}
+      <div ref={wrap} className={"stage" + (zoom > 1 ? " pan" : "")} onScroll={() => setScrollTick((n) => n + 1)}
+        onPointerDown={down} onPointerMove={move}
         onPointerUp={() => { drag.current = null; }} tabIndex={0} role="region" aria-label={t("Document page, scroll to read")}>
-        <div className="stage-inner" style={{ width: PAD * 2 + W + (callout ? CALLOUT + 72 : 0), minHeight: PAD * 2 + Math.max(H, callout ? CALLOUT + 70 : 0) }}>
+        <div className="stage-inner" style={{ width: PAD * 2 + W, minHeight: PAD * 2 + H }}>
           {clean && <span className="chip clr cleanchip"><Icon name="check_circle" />{t("No problems found on this page")}</span>}
           <div className={"paper2" + (clean ? " clean" : "")} style={{ width: W, height: broken ? 320 : H, left: PAD, top: PAD }}>
             {src && !broken ? <img src={assetUrl(src)} alt={`${doc.label}, ${t("page")} ${page}`} draggable={false}
@@ -209,18 +217,24 @@ function Stage({ doc, page, issues, selected, heat, heatUrl, onSelect, toolbar }
               );
             })}
           </div>
-          {mag && selected && src && (
+          {mag && selected?.box && src && (
             <>
-              <svg className="maglines" width="100%" height="100%" aria-hidden="true">
-                <line x1={mag.bx} y1={mag.by0} x2={mag.cx} y2={mag.cy - CALLOUT / 2} />
-                <line x1={mag.bx} y1={mag.by1} x2={mag.cx} y2={mag.cy + CALLOUT / 2} />
-              </svg>
-              <figure className={`magnifier ${laneClass(selected.f.lane)}`} style={{ left: mag.cx - CALLOUT / 2, top: mag.cy - CALLOUT / 2 }}>
-                <div className="lens" style={{ width: CALLOUT, height: CALLOUT, backgroundImage: `url("${assetUrl(src)}")`,
-                  backgroundSize: `${W * MAG}px ${H * MAG}px`, backgroundPosition: `${mag.bgx}px ${mag.bgy}px` }}
-                  role="img" aria-label={`${t("Enlarged")}: ${selected.f.title}`} />
-                <figcaption><span className={`evnum inline ${laneClass(selected.f.lane)}`}>{selected.n}</span>{selected.f.title}</figcaption>
-              </figure>
+              <section key={selected.f.finding_id} className={`evidence-detail ${laneClass(selected.f.lane)}`}
+                style={{ left: mag.left, top: mag.top, width: mag.panelWidth }}>
+                <h4><span>{t("Expanded evidence")} · {selected.n}{mag.scrollable && <> · {t("Scroll to inspect")}</>}</span>
+                  <button className="btn icon" onClick={() => onSelect(null)} aria-label={t("Close expanded evidence")} title={t("Close expanded evidence")}>
+                    <Icon name="close" />
+                  </button>
+                </h4>
+                <div className="lens" style={{ width: mag.viewWidth, height: mag.viewHeight }}
+                  role="region" aria-label={`${t("Enlarged")}: ${selected.f.title}`} tabIndex={0}>
+                  <div className="lens-crop" style={{ width: mag.width, height: mag.height }}>
+                    <img src={assetUrl(src)} alt="" draggable={false}
+                      style={{ width: imageW * MAG, height: imageH * MAG, left: mag.imageLeft, top: mag.imageTop }} />
+                  </div>
+                </div>
+                <p>{selected.f.title}</p>
+              </section>
             </>
           )}
         </div>
