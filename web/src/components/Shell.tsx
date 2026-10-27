@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { Icon } from "../icons";
 import { ROLES, useSettings } from "../app/settings";
 import { LANGUAGES, hasUiTable } from "../i18n";
@@ -35,7 +35,7 @@ function LanguageMenu() {
         <Icon name="translate" />{cur.id === "en" ? "English" : cur.native}<Icon name="keyboard_arrow_down" />
       </button>
       {open && (
-        <div className="pop" role="listbox" aria-label={t("Language")} style={{ insetInlineEnd: 0, top: 42, width: 240, padding: "6px 0", maxHeight: 420, overflow: "auto" }}>
+        <div className="pop menu" role="listbox" aria-label={t("Language")} style={{ insetInlineEnd: 0, insetInlineStart: "auto", top: 42, width: 240 }}>
           {LANGUAGES.map((l) => (
             <button key={l.id} role="option" aria-selected={l.id === lang} className={"menu-item" + (l.id === lang ? " on" : "")}
               onClick={() => { setLang(l.id); setOpen(false); }}>
@@ -98,8 +98,16 @@ function ShortcutSheet({ onClose }: { onClose: () => void }) {
   );
 }
 
+/** WK27 A2: the rail can be expanded (about 220 px, icon + full name) or collapsed (72 px); the choice is remembered. */
+function useRailOpen(): [boolean, (v: boolean) => void] {
+  const [open, setOpen] = useState(() => { try { return localStorage.getItem("pramaan.rail") === "open"; } catch { return false; } });
+  const set = (v: boolean) => { setOpen(v); try { localStorage.setItem("pramaan.rail", v ? "open" : "closed"); } catch { /* storage blocked */ } };
+  return [open, set];
+}
+
 export function Shell({ children }: { children: ReactNode }) {
   const { theme, setTheme, t, mode } = useSettings();
+  const [railOpen, setRailOpen] = useRailOpen();
   const nav = useNavigate();
   const loc = useLocation();
   const input = useRef<HTMLInputElement>(null);
@@ -116,17 +124,22 @@ export function Shell({ children }: { children: ReactNode }) {
     return () => document.removeEventListener("keydown", k);
   }, []);
   return (
-    <div className="app">
+    <div className={"app" + (railOpen ? " rail-open" : "")}>
       <nav className="rail" aria-label={t("Main")}>
-        <div className="logo"><GearMark size={36} /></div>
+        <Link to="/" className="logo" aria-label={t("My queue")} title={t("My queue")}><GearMark size={36} /></Link>
         {RAIL.map((r) => (
-          <NavLink key={r.to} to={r.to} end={r.to === "/"} className={({ isActive }) => (isActive || (r.to === "/" && loc.pathname.startsWith("/case")) ? "active" : "")}>
-            <Icon name={r.icon} />{t(r.label)}
+          <NavLink key={r.to} to={r.to} end={r.to === "/"} title={t(r.label)}
+            className={({ isActive }) => "rail-item" + (isActive || (r.to === "/" && loc.pathname.startsWith("/case")) ? " active" : "")}>
+            <Icon name={r.icon} /><span className="rail-label">{t(r.label)}</span>
           </NavLink>
         ))}
+        <button className="rail-toggle" onClick={() => setRailOpen(!railOpen)} aria-expanded={railOpen}
+          aria-label={t(railOpen ? "Collapse the menu" : "Expand the menu")} title={t(railOpen ? "Collapse the menu" : "Expand the menu")}>
+          <Icon name={railOpen ? "left_panel_close" : "left_panel_open"} />{railOpen && <span className="rail-label">{t("Collapse")}</span>}
+        </button>
       </nav>
       <header className="topbar">
-        <span className="wordmark" role="img" aria-label="Pramaan AI">Pramaan <b>AI</b></span>
+        <Link to="/" className="wordmark" aria-label={"Pramaan AI: " + t("My queue")}><span aria-hidden="true">Pramaan <b>AI</b></span></Link>
         <form className="search" role="search" onSubmit={(e) => { e.preventDefault(); nav(`/search?q=${encodeURIComponent(q)}`); }}>
           <Icon name="search" className="icon" />
           <input ref={input} value={q} onChange={(e) => setQ(e.target.value)} aria-label={t("Search")}

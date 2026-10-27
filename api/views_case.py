@@ -14,7 +14,7 @@ from pramaan.feedback import rows as feedback_rows
 from pramaan.notes import list_notes
 from pramaan.trust import app_score
 
-from .ctx import CATEGORY_LABEL, DOC_LABEL, LANE_LABEL, ROLES, Ctx, due_word, place
+from .ctx import CATEGORY_LABEL, DOC_LABEL, LANE_LABEL, ROLES, Ctx, clean_reason, due_word, place
 
 SEV = {"high": 3, "medium": 2, "low": 1, "info": 0}
 LANE_RANK = {"return_for_rectification": 3, "human_review": 2, "info": 1, "clear": 0}
@@ -59,8 +59,8 @@ def queue_item(ctx: Ctx, r, m: dict, rows: list[dict]) -> dict:
     top = max(r.findings, key=lambda f: (LANE_RANK.get(f.lane, 0), SEV.get(f.severity, 0)), default=None)
     due = date.fromisoformat(s["due_by"])
     return {"app_id": r.app_id, "institute": d.get("institute_name"), "permanent_id": m.get("permanent_id"),
-            "category": ctx.tr(CATEGORY_LABEL.get(r.category, r.category)), "academic_year": r.academic_year, "place": place(d.get("address")),
-            "region": d.get("region"), "officer": s["assigned_officer"], "trust": s["trust_score"], "lane": r.lane,
+            "category": ctx.tr(CATEGORY_LABEL.get(r.category, r.category)), "academic_year": ctx.year(r.academic_year), "place": place(d.get("address")),
+            "region": d.get("region"), "officer": ctx.name(s["assigned_officer"]), "trust": s["trust_score"], "lane": r.lane,
             "lane_label": ctx.tr(LANE_LABEL[r.lane]), "priority": round(r.priority, 2), "due_by": s["due_by"],
             "due_word": ctx.tr(due_word(due, ctx.today)), "headline": ctx.tr(top.title) if top else ctx.tr("All checks passed. Spot check due"),
             "headline_lane": top.lane if top else "clear"}
@@ -101,6 +101,31 @@ def _page_url(app_id, doc_id, n, kind="page"):
     return f"/api/documents/{app_id}/{doc_id}/{kind}/{n}.png"
 
 
+TL_NOTE = {"derived from the manifest": "From the application"}
+
+
+def timeline(ctx: Ctx, app_id: str) -> list[dict]:
+    """build_timeline with display names: officer names instead of ids, plain notes, and `real` = a real audit-log block."""
+    out = []
+    for e in build_timeline(app_id, ctx.out, ctx.db, ctx.apps, ctx.today):
+        note = e["note"] or ""
+        if note.startswith("lane "):
+            note = LANE_LABEL.get(note[5:], note[5:])
+        note = TL_NOTE.get(note, note)
+        out.append({**e, "actor": ctx.name(e["actor"]), "note": ctx.tr(note), "real": e["hash"] != "-",
+                    "refs": [ctx.name(x) if str(x).startswith("officer.") else x for x in e["refs"]]})
+    return out
+
+
+def _group(f) -> str:
+    """Where a finding shows on the Evidence tab: a photo, one document, or the whole file (cross-checks, missing documents)."""
+    if f.source == "photo" or any((e.doc_id or "").startswith("photo:") for e in f.evidence):
+        return "photo"
+    if f.source == "crosscheck" or not (f.doc_id or any(e.doc_id for e in f.evidence)):
+        return "file"
+    return "doc"
+
+
 def case(ctx: Ctx, app_id: str) -> dict:
     r, m = ctx.result(app_id), ctx.manifest(app_id)
     rows = _audit(ctx, app_id)
@@ -109,31 +134,49 @@ def case(ctx: Ctx, app_id: str) -> dict:
     fb = _feedback(ctx)
     docs = []
     for d in r.documents:
-        heat = [n for n in range(1, max(1, d.pages) + 1) if os.path.exists(os.path.join(ctx.out, "heatmaps", f"{d.doc_id}_p{n}.png"))]
-        docs.append({"doc_id": d.doc_id, "label": ctx.tr(DOC_LABEL.get(d.doc_type, d.doc_type)), "doc_type": d.doc_type,
+        heat = [n for n in range(1, max(1, d.pages) + 1) if ctx.heatmap(d.doc_id, n)]
+        docs.append({"doc_id": d.doc_id, "label": ctx.tr(DOC_LABEL.get(d.doc_type, d.doc_type)), "doc_type": d.doc_type, "kind": "document",
                      "pages": max(1, d.pages), "status": _doc_status(r, d), "scanned": d.is_scanned,
                      "page_urls": [_page_url(app_id, d.doc_id, n) for n in range(1, max(1, d.pages) + 1)],
                      "heatmap_urls": {n: _page_url(app_id, d.doc_id, n, "heatmap") for n in heat}})
-    findings = [{"finding_id": f.finding_id, "rule_id": f.rule_id, "title": ctx.tr(f.title), "reason": ctx.tr(f.reason), "lane": f.lane,
+    photos = m.get("photos", [])
+    for k, ph in enumerate(photos, 1):                     # photos are documents too (WK27 D2)
+        pid = f"photo:{os.path.basename(ph)}"
+        lanes = [f.lane for f in r.findings if f.lane != "info" and any(e.doc_id == pid for e in f.evidence)]
+        docs.append({"doc_id": pid, "label": ctx.tr("Campus photo") + (f" {k}" if len(photos) > 1 else ""), "doc_type": "photo", "kind": "photo",
+                     "pages": 1, "status": max(lanes, key=lambda l: LANE_RANK[l]) if lanes else "clear", "scanned": False,
+                     "page_urls": [f"/api/photos/{app_id}/{os.path.basename(ph)}"], "heatmap_urls": {}})
+    findings = [{"finding_id": f.finding_id, "rule_id": f.rule_id, "title": ctx.tr(f.title), "reason": ctx.tr(clean_reason(f.reason)), "lane": f.lane,
                  "severity": f.severity, "source": f.source, "doc_id": f.doc_id, "clause": f.aph_clause, "clause_verified": f.clause_verified,
                  "evidence": [{"doc_id": e.doc_id, "page": e.page, "bbox": e.bbox.model_dump() if e.bbox else None} for e in f.evidence],
-                 "feedback": (fb.get(f.finding_id) or {}).get("verdict")}
+                 "group": _group(f), "feedback": (fb.get(f.finding_id) or {}).get("verdict")}
                 for f in sorted(r.findings, key=lambda f: (-LANE_RANK.get(f.lane, 0), -SEV.get(f.severity, 0)))]
     tamper = [f for f in findings if f["rule_id"] == "F-TAMPER"]
     sc = app_score(r, ctx.lang)
     return {"app_id": app_id, "institute": m.get("declared", {}).get("institute_name"), "permanent_id": m.get("permanent_id"),
-            "category": ctx.tr(CATEGORY_LABEL.get(r.category, r.category)), "academic_year": r.academic_year,
+            "category": ctx.tr(CATEGORY_LABEL.get(r.category, r.category)), "academic_year": ctx.year(r.academic_year),
             "place": place(m.get("declared", {}).get("address")), "lane": r.lane, "lane_label": ctx.tr(LANE_LABEL[r.lane]),
             "trust": {"score": sc["score"], "reasons": sc["reasons"], "label": sc["label"]},
             "checklist": {k: sum(x["status"] == s_ for x in ck) for k, s_ in (("passed", "green"), ("to_check", "amber"),
                                                                               ("to_return", "red"), ("not_automated", "grey"))},
-            "assigned": s["assigned_officer"], "due_by": s["due_by"], "due_word": ctx.tr(due_word(date.fromisoformat(s["due_by"]), ctx.today)),
+            "assigned": ctx.name(s["assigned_officer"]), "due_by": s["due_by"], "due_word": ctx.tr(due_word(date.fromisoformat(s["due_by"]), ctx.today)),
             "appeal": s["appeal"], "notes_count": len(list_notes(ctx.db, app_id)), "documents": docs, "findings": findings,
             "tamper": {"ran": any(d["scanned"] for d in docs), "found": bool(tamper),
                        "text": ctx.tr("Tamper check: possible alteration, needs human review") if tamper else
                        ctx.tr("Tamper check: no edit marks found") if any(d["scanned"] for d in docs) else
                        ctx.tr("Tamper check: text PDFs, checked for edits in the file structure")},
-            "timeline": build_timeline(app_id, ctx.out, ctx.db, ctx.apps, ctx.today), "action": ctx.tr(ROLES[ctx.role]["action"])}
+            "timeline": timeline(ctx, app_id), "action": ctx.tr(ROLES[ctx.role]["action"])}
+
+
+def notes(ctx: Ctx, app_id: str) -> list[dict]:
+    """Internal notes with display names (author and @mentions), never raw user ids (WK27 A4)."""
+    out = []
+    for n in list_notes(ctx.db, app_id):
+        text = n["text"]
+        for m in n.get("mentions") or []:
+            text = text.replace(f"@{m}", f"@{ctx.name(m)}")
+        out.append({**n, "author": ctx.name(n["author"]), "text": text})
+    return out
 
 
 def checklist(ctx: Ctx, app_id: str) -> list[dict]:
@@ -149,5 +192,5 @@ def checklist(ctx: Ctx, app_id: str) -> list[dict]:
                ("Cross-check" if any(f.source == "crosscheck" for f in fs) else "AICTE records (demo adapter)" if row["id"] == "R02" else "Document text"))
         verdicts = [fb[f.finding_id]["verdict"] for f in fs if f.finding_id in fb]
         out.append({"n": i, "id": row["id"], "ref": row.get("ref"), "item": row["item"], "status": row["status"], "status_label": ctx.tr(word[row["status"]]),
-                    "found": row["why"], "source": ctx.tr(src), "finding_ids": [f.finding_id for f in fs], "officer": verdicts[-1] if verdicts else None})
+                    "found": ctx.plain(ctx.year(row["why"])), "source": ctx.tr(src), "finding_ids": [f.finding_id for f in fs], "officer": verdicts[-1] if verdicts else None})
     return out

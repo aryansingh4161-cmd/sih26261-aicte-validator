@@ -5,7 +5,8 @@ import { assetUrl, currentMode, postJSON } from "../../data/client";
 import type { Case, Preview, Sources as SourcesT } from "../../data/types";
 import { useT } from "../../app/settings";
 import { Icon } from "../../icons";
-import { DemoTag, ErrorState, LaneChip, Skeleton } from "../../components/ui";
+import { DemoTag, ErrorState, LaneChip, Skeleton, Unavailable } from "../../components/ui";
+import { useActions, useTicks } from "../../data/actions";
 
 // 05 Verification sources + 05b preview drawer (560 px): exactly what each source sent back.
 const when = (ts: string | null) => ts ? new Date(ts).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
@@ -43,15 +44,20 @@ export function Sources({ c }: { c: Case }) {
         </table>
       )}
       <p className="note">{t("Every question, answer and preview is written to the audit log with its hash.")}</p>
-      {open !== null && <PreviewDrawer appId={c.app_id} row={open} onClose={() => setOpen(null)} />}
+      {open !== null && <PreviewDrawer c={c} row={open} onClose={() => setOpen(null)} />}
     </div>
   );
 }
 
-function PreviewDrawer({ appId, row, onClose }: { appId: string; row: number; onClose: () => void }) {
+function PreviewDrawer({ c, row, onClose }: { c: Case; row: number; onClose: () => void }) {
   const t = useT();
+  const appId = c.app_id;
   const p = useView<Preview>(`cases/${appId}/sources/${row}/preview`);
-  const [added, setAdded] = useState(false);
+  const act = useActions();
+  const ticked = useTicks(appId, c.findings);
+  // WK27 G6: "Add to Letter of Deficiency" ticks the findings behind this source in the letter (the same tick as in the editor)
+  const behind = c.findings.filter((f) => p.data?.doc_id && f.doc_id === p.data.doc_id && (f.lane === "return_for_rectification" || f.lane === "human_review"));
+  const added = behind.length > 0 && behind.every((f) => ticked(f.finding_id, f.lane === "return_for_rectification"));
   return (
     <div className="modal-backdrop" style={{ placeItems: "stretch" }} onClick={onClose}>
       <aside className="drawer" role="dialog" aria-modal="true" aria-label={t("Preview")} onClick={(e) => e.stopPropagation()}>
@@ -73,7 +79,10 @@ function PreviewDrawer({ appId, row, onClose }: { appId: string; row: number; on
               <tbody>{p.data.kv.map((x) => <tr key={x.k}><td className="muted" style={{ width: 150 }}>{x.k}</td><td className={x.k.toLowerCase().includes("hash") || x.k.toLowerCase().includes("id") ? "mono" : ""}>{x.v}</td></tr>)}</tbody>
             </table>
             <div style={{ display: "flex", gap: 8, marginTop: 16, flexWrap: "wrap" }}>
-              <button className="btn primary" onClick={() => setAdded(true)} disabled={added}>{added ? t("Added to the letter draft") : t("Add to Letter of Deficiency")}</button>
+              <Unavailable reason={t("Nothing from this source needs to go into the letter.")} active={!behind.length}>
+                <button className="btn primary" disabled={added || !behind.length} onClick={() => behind.forEach((f) => act.tick(appId, f.finding_id, true))}>
+                  {added ? t("In the letter draft") : t("Add to Letter of Deficiency")}</button>
+              </Unavailable>
               {p.data.image && <a className="btn" href={assetUrl(p.data.image)} target="_blank" rel="noreferrer"><Icon name="open_in_new" />{t("Open full size")}</a>}
               {p.data.image && <a className="btn" href={assetUrl(p.data.image)} download><Icon name="download" />{t("Download")}</a>}
             </div>

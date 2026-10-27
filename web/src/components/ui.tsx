@@ -1,5 +1,5 @@
 import { motion, useReducedMotion } from "framer-motion";
-import type { ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Icon } from "../icons";
 import { useT } from "../app/settings";
 
@@ -24,6 +24,60 @@ export function LaneChip({ lane, text, short }: { lane: string; text?: string; s
 export function LaneIcon({ lane, size = 16 }: { lane: string; size?: number }) {
   const l = LANE[lane as Lane] || LANE.not_automated;
   return <Icon name={l.icon} size={size} className={`t-${l.cls}`} style={{ fill: `var(--${l.cls})` }} />;
+}
+
+/** WK27 A7: the one tooltip for a control that is not available right now. It says why on hover and on keyboard focus,
+ * instead of a silent disabled button. Wrap the disabled control; the wrapper takes the focus and the pointer. */
+export function Unavailable({ reason, active = true, align = "start", children }: { reason: string; active?: boolean; align?: "start" | "end"; children: ReactNode }) {
+  const id = useId();
+  if (!active) return <>{children}</>;
+  return (
+    <span className="unavail" tabIndex={0} aria-describedby={id}>
+      {children}
+      <span id={id} role="tooltip" className={"pop tipbox " + align}>{reason}</span>
+    </span>
+  );
+}
+
+/** WK27 A3: every custom dropdown. The menu is at most 320 px high and scrolls inside itself (the page never scrolls), it opens
+ * upward when there is no room below, and the chosen value stays on one line (ellipsis, full text in the tooltip). */
+export function Dropdown({ label, value, options, onChange, showLabel = true }: { label: string; value: string; options: [string, string][];
+  onChange: (v: string) => void; showLabel?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [up, setUp] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    const k = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", h); document.addEventListener("keydown", k);
+    return () => { document.removeEventListener("mousedown", h); document.removeEventListener("keydown", k); };
+  }, [open]);
+  const toggle = () => {
+    if (!open && ref.current) {
+      const r = ref.current.getBoundingClientRect();
+      const need = Math.min(320, options.length * 38 + 14) + 6;
+      setUp(window.innerHeight - r.bottom < need && r.top > window.innerHeight - r.bottom);
+    }
+    setOpen(!open);
+  };
+  const cur = options.find(([v]) => v === value)?.[1] ?? options[0]?.[1] ?? "";
+  const text = showLabel ? `${label}: ${cur}` : cur;
+  return (
+    <div ref={ref} className="dd-wrap">
+      <button className="select dd" title={text} aria-haspopup="listbox" aria-expanded={open} aria-label={showLabel ? undefined : `${label}: ${cur}`} onClick={toggle}>
+        <span className="dd-val">{text}</span><Icon name="keyboard_arrow_down" />
+      </button>
+      {open && (
+        <div className={"pop menu" + (up ? " up" : "")} role="listbox" aria-label={label}>
+          {options.map(([v, l]) => (
+            <button key={v} role="option" aria-selected={v === value} className={"menu-item" + (v === value ? " on" : "")} title={l}
+              onClick={() => { onChange(v); setOpen(false); }}><span className="mi-text">{l}</span></button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function DemoTag() {

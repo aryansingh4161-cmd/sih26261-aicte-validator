@@ -34,8 +34,11 @@ export function Analytics() {
       <div className="page-head">
         <div><span className="eyebrow">{d ? d.eyebrow : " "}<span className="sep">·</span>{t("Season 2026-27")}</span>
           <h1>{t("Analytics.")}<span className="line2">{d ? d.headline : " "}</span></h1></div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button className={"btn small" + (table ? " on" : "")} aria-pressed={table} onClick={() => setTable(!table)}>{t("Table view")}</button>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <div className="seg tall" role="group" aria-label={t("Show the weekly figures as")}>
+            <button className={!table ? "on" : ""} aria-pressed={!table} onClick={() => setTable(false)}>{t("Chart")}</button>
+            <button className={table ? "on" : ""} aria-pressed={table} onClick={() => setTable(true)}>{t("Table")}</button>
+          </div>
           <button className="btn" onClick={csv} disabled={!d}><Icon name="download" />{t("Export CSV")}</button>
         </div>
       </div>
@@ -43,7 +46,7 @@ export function Analytics() {
       {v.isError && <ErrorState error={v.error} retry={() => v.refetch()} />}
       {d && (
         <>
-          <div className="kpis">{d.kpis.map((k) => <div key={k.label}><div className="kpi">{k.value}</div><div className="muted">{k.label}</div></div>)}</div>
+          <div className="kpis">{d.kpis.map((k) => <div key={k.label}><div className={"kpi" + (k.small ? " small" : "")}>{k.value}</div><div className="muted">{k.label}</div></div>)}</div>
           <div className="an-grid">
             <div className="box">
               <h3>{t("Files by lane, per week of submission")}</h3>

@@ -2,39 +2,38 @@ import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useView } from "../data/hooks";
 import { currentMode } from "../data/client";
-import { useActions } from "../data/actions";
+import { useActions, useTicks, useVerdicts } from "../data/actions";
 import type { Case, LetterFull } from "../data/types";
 import { useSettings } from "../app/settings";
 import { LANGUAGES } from "../i18n";
 import { Icon } from "../icons";
-import { ErrorState, GearMark, Skeleton } from "../components/ui";
-import { Dropdown } from "./Home";
+import { Dropdown, ErrorState, GearMark, Skeleton, Unavailable } from "../components/ui";
 
-// 08 Letter editor: an editable Letter of Deficiency with the Handbook quotes; "Seal and issue" adds the hash + QR, puts it in the
-// outbox, writes the audit block and starts the 7-day appeal window (letters.save_final + seal.seal_html on the server).
+// 08 Letter editor: an editable Letter of Deficiency; "Seal and issue" adds the hash + QR, puts it in the outbox, writes the audit
+// block and starts the 7-day appeal window (letters.save_final + seal.seal_html on the server). WK27 D3/D4: every Return or Human
+// review item can be ticked in or out; a Correct mark ticks it, a False alarm mark unticks it, and the officer's own ticks are kept.
 export function LetterEditor({ c }: { c: Case }) {
   const { t, lang } = useSettings();
   const nav = useNavigate();
   const [letterLang, setLetterLang] = useState(lang);
-  const [exclude, setExclude] = useState<string[]>([]);
-  const [extra, setExtra] = useState<string[]>([]);                 // Human review items the officer adds (live: the server redrafts)
-  const base = useView<LetterFull>(`cases/${c.app_id}/letter`, { lang: letterLang });
-  const defaults = (base.data?.items || []).filter((i) => i.include).map((i) => i.finding_id);
-  const v = useView<LetterFull>(`cases/${c.app_id}/letter`, extra.length ? { lang: letterLang, include: [...defaults, ...extra].join(",") } : { lang: letterLang });
+  const v = useView<LetterFull>(`cases/${c.app_id}/letter`, { lang: letterLang });
   const paper = useRef<HTMLDivElement>(null);
   const act = useActions();
+  const ticked = useTicks(c.app_id, c.findings);
+  const verdict = useVerdicts(c.findings);
   const [sealed, setSealed] = useState<{ hash: string; seal: string; demo: boolean; file?: string } | null>(null);
   const [busy, setBusy] = useState(false);
-  const defs = useMemo(() => (v.data?.deficiencies || []).filter((d) => !exclude.includes(d.finding_id)), [v.data, exclude]);
+  const on = useMemo(() => new Set((v.data?.items || []).filter((i) => ticked(i.finding_id, i.default)).map((i) => i.finding_id)), [v.data, ticked]);
+  const defs = (v.data?.deficiencies || []).filter((d) => on.has(d.finding_id));
   const alreadySealed = c.timeline.some((e) => e.type === "letter issued");
   const seal = async () => {
     if (!paper.current || !v.data) return;
     setBusy(true);
     try {
-      const include = v.data.items.filter((i) => i.include && !exclude.includes(i.finding_id)).map((i) => i.finding_id);
-      setSealed(await act.seal(c.app_id, include, paper.current.innerText));
+      setSealed(await act.seal(c.app_id, [...on], paper.current.innerText, c.institute));
     } finally { setBusy(false); }
   };
+  const sealWhy = sealed ? "" : !defs.length ? t("Tick at least one deficiency to seal.") : "";
   return (
     <div className="letterpage">
       <div className="casehead" style={{ borderBottom: "1px solid var(--border)" }}>
@@ -47,7 +46,9 @@ export function LetterEditor({ c }: { c: Case }) {
             <Dropdown label={t("Letter in")} value={letterLang} onChange={setLetterLang}
               options={LANGUAGES.filter((l) => ["en", "hi", "bn", "ta", "mr"].includes(l.id) || currentMode() === "live").map((l) => [l.id, l.id === "en" ? "English" : l.native])} />
             <button className="btn" onClick={() => window.print()}>{t("Preview PDF")}</button>
-            <button className="btn primary" disabled={busy || !!sealed || !defs.length} onClick={seal}>{t("Seal and issue")}<Icon name="verified_user" /></button>
+            <Unavailable reason={sealWhy} active={!!sealWhy} align="end">
+              <button className="btn primary" disabled={busy || !!sealed || !defs.length} onClick={seal}>{t("Seal and issue")}<Icon name="verified_user" /></button>
+            </Unavailable>
           </div>
         </div>
       </div>
@@ -77,22 +78,24 @@ export function LetterEditor({ c }: { c: Case }) {
         <aside className="sidecol">
           {sealed ? <SealResult r={sealed} appId={c.app_id} onBack={() => nav(`/case/${c.app_id}`)} /> : (
             <>
-              <h3 className="sec">{t("In this letter")}</h3>
+              <h3 className="sec">{t("Deficiencies in this letter")}</h3>
+              <p className="muted" style={{ margin: "-4px 0 12px", fontSize: 13 }}>{t("Ticked items go into the letter. Mark a finding Correct in Evidence to add it here.")}</p>
+              {v.isLoading && <Skeleton rows={3} height={40} />}
               {v.data?.items.map((i) => {
-                const on = i.include && !exclude.includes(i.finding_id);
+                const yes = on.has(i.finding_id);
+                const mark = verdict(i.finding_id);
                 return (
-                  <label key={i.finding_id} className="incl">
-                    <input type="checkbox" checked={on} disabled={i.lane === "human_review" && currentMode() !== "live"}
-                      onChange={() => i.lane === "human_review"
-                        ? setExtra(extra.includes(i.finding_id) ? extra.filter((x) => x !== i.finding_id) : [...extra, i.finding_id])
-                        : setExclude(on ? [...exclude, i.finding_id] : exclude.filter((x) => x !== i.finding_id))} />
-                    <span><span className="incl-title">{i.title}{i.lane === "human_review" && !on && ` (${t("to check, not in letter")})`}</span>
-                      <span className="mono muted" style={{ fontSize: 11.5 }}>{i.rule_id}</span></span>
+                  <label key={i.finding_id} className={"incl" + (yes ? " on" : "")}>
+                    <input type="checkbox" checked={yes} disabled={!!sealed} onChange={() => act.tick(c.app_id, i.finding_id, !yes)} />
+                    <span><span className="incl-title">{i.title}</span>
+                      <span className="incl-meta"><span className="mono muted">{i.rule_id}</span>
+                        {mark === "correct" && <span className="chip clr tiny"><Icon name="check_circle" />{t("Confirmed")}</span>}
+                        {mark === "false alarm" && <span className="chip na tiny"><Icon name="do_not_disturb_on" />{t("False alarm")}</span>}
+                        {!mark && i.lane === "human_review" && <span className="chip rev tiny"><Icon name="visibility" />{t("To check")}</span>}</span></span>
                   </label>
                 );
               })}
-              {v.data && <div className="infobox"><b>{t("Handbook quotes")}</b>
-                <p>{t("Every quote is checked word for word against the Handbook before it can go in a letter.")}</p></div>}
+              {v.data && !v.data.items.length && <p className="muted">{t("Pramaan found no deficiency in this file.")}</p>}
               <div className="infobox plain"><b><Icon name="verified_user" style={{ color: "var(--brand)" }} /> {t("What \"Seal and issue\" does")}</b>
                 <p>{t("Adds a hash and a QR code, saves the letter to the outbox, writes an audit block, and starts the 7-day appeal window. A sealed letter cannot be edited.")}</p></div>
             </>

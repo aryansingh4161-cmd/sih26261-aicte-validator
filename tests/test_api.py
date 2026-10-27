@@ -46,12 +46,19 @@ def t_reads():
         ok(f"/api/cases/{a}/resubmission")
         ok(f"/api/cases/{a}/notes")
         lt = ok(f"/api/cases/{a}/letter").json()
-        assert "text" in lt and lt["quotes"]["label"] == "measured"
+        assert "text" in lt and {d["finding_id"] for d in lt["deficiencies"]} == {i["finding_id"] for i in lt["items"]}   # every item drafted (WK27 D4)
+        assert "2026-27" in lt["header"]["subject"] and "2027-28" not in str(lt)                                          # WK27 A5
+        assert all(e["actor"] and "." not in e["actor"] and "lane " not in e["note"] for e in cs["timeline"])             # WK27 A4
         ok(f"/api/cases/{a}/evc")
         d = cs["documents"][0]
         img = ok(d["page_urls"][0])
         assert img.headers["content-type"] == "image/png" and img.content[:4] == b"\x89PNG"
     assert ok("/api/cases/APP-19/resubmission").json()["available"]
+    c17 = ok("/api/cases/APP-17").json()                                         # WK27 D2: photos are documents, photo findings sit on them
+    photos = {d["doc_id"] for d in c17["documents"] if d["kind"] == "photo"}
+    assert photos and all(f["group"] == "photo" and f["evidence"][0]["doc_id"] in photos for f in c17["findings"])
+    assert any(d["status"] == "human_review" for d in c17["documents"] if d["kind"] == "photo")
+    assert ok(next(d for d in c17["documents"] if d["kind"] == "photo")["page_urls"][0]).content[:2] == b"\xff\xd8"
     for p in ("/api/letters", "/api/outbox", "/api/calendar", "/api/appeals", "/api/batch", "/api/roles", "/api/docs/privacy",
               "/api/search?q=fire%20expired", "/api/cases/APP-02/zip"):
         ok(p)

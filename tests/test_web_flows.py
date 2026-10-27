@@ -1,7 +1,8 @@
 """WK26 Playwright flows against the LIVE stack (no pytest): a fresh pipeline run of the 23 synthetic demo apps in a temp folder,
 the API (uvicorn, port 8600) and the web app (Vite dev, live mode, port 5173), driven with the installed Google Chrome.
   python -m tests.test_web_flows [name ...]
-Flows: sign in -> APP-07 -> DigiLocker preview -> draft + seal a Letter of Deficiency -> verify; batch approve with the spot check;
+Flows: sign in -> APP-07 -> DigiLocker preview -> draft + seal a Letter of Deficiency -> verify; APP-17: Correct -> ticked in the
+letter -> seal (WK27); batch approve with the spot check;
 Hindi and Urdu (right to left); dark mode."""
 from __future__ import annotations
 
@@ -85,6 +86,29 @@ def t_sign_in_letter_verify(b):
     pg.get_by_text("VALID: matches audit entry").first.wait_for(timeout=20000)
 
 
+def t_photo_correct_letter(b):
+    """WK27 D3/D4 (live): on APP-17 mark one photo finding Correct -> it is ticked in the Letter of Deficiency -> Seal and issue works."""
+    pg = page(b)
+    pg.goto(f"{BASE}/#/case/APP-17")
+    ph = pg.locator(".isec", has=pg.locator(".isec-title", has_text="Photos and metadata"))
+    ph.locator(".issue").first.wait_for(timeout=30000)
+    assert ph.locator(".issue").count() == 4, "APP-17 photo findings sit under Photos and metadata"
+    card = ph.locator(".issue").first
+    title = card.locator(".finding-title").inner_text()
+    with pg.expect_response(lambda r: "/feedback" in r.url and r.request.method == "POST"):
+        card.get_by_role("button", name="Correct").click()
+    pg.goto(f"{BASE}/#/case/APP-17/letter")
+    row = pg.locator(".incl", has_text=title)
+    row.wait_for(timeout=20000)
+    pg.wait_for_function("t => [...document.querySelectorAll('.incl')].some(l => l.innerText.includes(t) && l.querySelector('input').checked)",
+                         arg=title, timeout=10000)                       # Correct ticks the item in the letter
+    assert pg.locator(".letter-paper ol li").count() == 1
+    assert "Handbook quotes" not in pg.locator("body").inner_text()
+    pg.get_by_role("button", name="Seal and issue").click()
+    pg.get_by_text("Sealed and issued.").wait_for(timeout=20000)
+    assert "VALID: matches audit entry" in pg.locator(".sealresult").inner_text()
+
+
 def t_batch_approve(b):
     pg = page(b)
     pg.goto(f"{BASE}/#/")
@@ -117,7 +141,8 @@ def t_languages_and_dark(b):
     assert bg == "rgb(17, 25, 21)", bg                               # --bg dark #111915
 
 
-TESTS = {"sign_in_letter_verify": t_sign_in_letter_verify, "batch_approve": t_batch_approve, "languages_and_dark": t_languages_and_dark}
+TESTS = {"sign_in_letter_verify": t_sign_in_letter_verify, "photo_correct_letter": t_photo_correct_letter, "batch_approve": t_batch_approve,
+         "languages_and_dark": t_languages_and_dark}
 
 if __name__ == "__main__":
     want = sys.argv[1:] or list(TESTS)

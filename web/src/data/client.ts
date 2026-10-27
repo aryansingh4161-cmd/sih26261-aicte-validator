@@ -29,6 +29,9 @@ function snapPath(path: string, lang: string, role: string): string {
   return `${BASE}snapshot/${l}/${path}.json`;
 }
 
+/** The officer copy ZIP of a case: built by the server (live) or pre-built into the snapshot (demo). */
+export const caseZipUrl = (appId: string) => (mode === "live" ? `/api/cases/${appId}/zip` : `${BASE}snapshot/zips/${appId}.zip`);
+
 export function assetUrl(url: string | null | undefined): string | undefined {
   if (!url) return undefined;
   if (mode === "live") return url;
@@ -59,15 +62,19 @@ export async function postJSON<T>(path: string, body: unknown): Promise<T> {
   return r.json();
 }
 
-/** Demo-mode action store: what the officer did in this browser (never sent anywhere). */
+/** Action store: what the officer did in this browser. Demo: kept here only. Live: the marks and letter ticks are also kept here so
+ * the screens follow them at once; every action itself goes to the API. */
 const KEY = "pramaan.demo.actions.v1";
+// ticks: the officer's own ticks in the Letter of Deficiency editor (both modes; a Correct / False alarm mark resets the tick to follow it).
 export type DemoActions = { feedback: Record<string, string>; notes: Record<string, { text: string; ts: string; author: string }[]>;
-  sealed: Record<string, { hash: string; ts: string; text: string }>; approved: string[]; assigned: Record<string, string> };
+  sealed: Record<string, { hash: string; ts: string; text: string; institute?: string }>; approved: string[]; assigned: Record<string, string>;
+  ticks: Record<string, Record<string, boolean>> };
+const EMPTY: DemoActions = { feedback: {}, notes: {}, sealed: {}, approved: [], assigned: {}, ticks: {} };
 export function demoActions(): DemoActions {
   try {
-    return { feedback: {}, notes: {}, sealed: {}, approved: [], assigned: {}, ...JSON.parse(localStorage.getItem(KEY) || "{}") };
+    return { ...EMPTY, ...JSON.parse(localStorage.getItem(KEY) || "{}") };
   } catch {
-    return { feedback: {}, notes: {}, sealed: {}, approved: [], assigned: {} };
+    return { ...EMPTY };
   }
 }
 export function saveDemoActions(a: DemoActions) {

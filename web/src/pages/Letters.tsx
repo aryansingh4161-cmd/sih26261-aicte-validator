@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { useView } from "../data/hooks";
 import { currentMode, postJSON } from "../data/client";
-import { useDemoActions } from "../data/actions";
+import { useDemoActions, verifyDemoSeal } from "../data/actions";
 import type { LetterRow, OutboxRow } from "../data/types";
 import { useSettings } from "../app/settings";
 import { Icon } from "../icons";
-import { ErrorState, Skeleton } from "../components/ui";
+import { ErrorState, Skeleton, Unavailable } from "../components/ui";
 
 // 09 Letters and outbox: Drafts / Sealed / Sent, seal hash, PDF (print the sealed HTML), Verify (seal.verify_sealed on the server).
 const STATUS: Record<string, [string, string]> = { draft: ["rev", "visibility"], sealed: ["na", "do_not_disturb_on"], sent: ["clr", "check_circle"] };
@@ -18,14 +18,17 @@ export function Letters() {
   const [tab, setTab] = useState("all");
   const [verifyOpen, setVerifyOpen] = useState(false);
   const [result, setResult] = useState<Record<string, string>>({});
-  const local: LetterRow[] = currentMode() === "demo" ? Object.entries(demo.sealed).map(([a, s]) => ({ kind: "Letter of Deficiency", kind_label: t("Letter of Deficiency"),
-    app_id: a, institute: t("(sealed in this browser)"), status: "sealed", status_label: t("Sealed, not sent"), hash: "#" + s.hash.slice(0, 6), date: s.ts.slice(0, 10), file: null })) : [];
+  const local: (LetterRow & { local?: boolean })[] = currentMode() === "demo" ? Object.entries(demo.sealed).map(([a, s]) => ({ kind: "Letter of Deficiency", kind_label: t("Letter of Deficiency"),
+    app_id: a, institute: s.institute || t("(sealed in this browser)"), status: "sealed", local: true, status_label: t("Sealed, not sent"), hash: "#" + s.hash.slice(0, 6), date: s.ts.slice(0, 10), file: null })) : [];
   const all = [...local, ...(v.data?.letters || []).filter((l) => !(l.status === "draft" && demo.sealed[l.app_id]))];
-  const rows = tab === "all" ? all : all.filter((l) => l.status === tab);
+  const rows: (LetterRow & { local?: boolean })[] = tab === "all" ? all : all.filter((l) => l.status === tab);
   const n = (s: string) => all.filter((l) => l.status === s).length;
   const fileUrl = (f: string) => (mode === "live" ? `/api/letters/file/${f}` : `${import.meta.env.BASE_URL}snapshot/letters/${f}`);
-  const verify = async (l: LetterRow) => {
-    if (mode === "live" && l.file) { const r = await postJSON<{ result: string }>("letters/verify", { file: l.file }); setResult({ ...result, [l.app_id + l.date]: r.result }); }
+  const verify = async (l: LetterRow & { local?: boolean }) => {
+    if (l.local) {
+      setResult({ ...result, [l.app_id + l.date]: (await verifyDemoSeal(l.app_id))
+        ? t("VALID: matches the hash sealed in this browser (demo). The live app also checks the audit chain.") : t("Does not match: the text changed after sealing.") });
+    } else if (mode === "live" && l.file) { const r = await postJSON<{ result: string }>("letters/verify", { file: l.file }); setResult({ ...result, [l.app_id + l.date]: r.result }); }
     else setResult({ ...result, [l.app_id + l.date]: l.verify || t("Not sealed yet") });
   };
   return (
@@ -58,10 +61,12 @@ export function Letters() {
               <tr key={l.kind + l.app_id + l.date}>
                 <td>{l.kind_label}</td><td>{l.institute}</td><td><span className="chip plain mono">{l.app_id}</span></td>
                 <td><span className={`chip ${cls}`}><Icon name={ic} />{l.status_label}</span></td>
-                <td className="mono">{l.hash || <span className="muted">{t("not sealed")}</span>}</td>
+                <td>{l.hash ? <span className="mono">{l.hash}</span> : <span className="muted">{t("not sealed")}</span>}</td>
                 <td>{new Date(l.date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</td>
                 <td style={{ whiteSpace: "nowrap", textAlign: "end" }}>
-                  {l.file ? <a className="btn small" href={fileUrl(l.file)} target="_blank" rel="noreferrer">PDF</a> : <button className="btn small" disabled>PDF</button>}{" "}
+                  {l.file ? <a className="btn small" href={fileUrl(l.file)} target="_blank" rel="noreferrer">PDF</a>
+                    : <Unavailable reason={l.status === "draft" ? t("A draft has no sealed PDF yet.") : t("The sealed PDF with its QR code is made by the server in the live app.")} align="end">
+                        <button className="btn small" disabled>PDF</button></Unavailable>}{" "}
                   <button className="btn small" onClick={() => verify(l)}>{t("Verify")}</button>
                   {res && <div className={res.startsWith("VALID") ? "t-clr" : "t-rev"} style={{ fontSize: 12, marginTop: 4, whiteSpace: "normal", maxWidth: 220 }}>{res}</div>}
                 </td>

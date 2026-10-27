@@ -1,45 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useView } from "../data/hooks";
 import { currentMode } from "../data/client";
 import { useActions, useDemoActions } from "../data/actions";
 import type { Case, Officer, Queue, QueueItem } from "../data/types";
 import { mainActionPath, useSettings } from "../app/settings";
 import { Icon } from "../icons";
-import { EmptyQueue, ErrorState, LaneChip, Skeleton } from "../components/ui";
+import { Dropdown, EmptyQueue, ErrorState, GearMark, LaneChip, Skeleton } from "../components/ui";
 import { AppealText, ChainTimeline, ChecklistCounts, DocViewer, FindingCard, TrustBar, boxesFor } from "../components/case";
 import { BatchModal } from "../components/BatchModal";
 import { LanguageNote } from "../components/Shell";
 
-// 02 Home: my queue (Option 3 "Desk"): queue list (420 px) + the selected file's preview.
-export function Dropdown({ label, value, options, onChange }: { label: string; value: string; options: [string, string][]; onChange: (v: string) => void }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
-    document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
-  }, [open]);
-  const cur = options.find(([v]) => v === value)?.[1] ?? options[0][1];
-  return (
-    <div ref={ref} style={{ position: "relative" }}>
-      <button className="select dd" aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen(!open)}
-        onKeyDown={(e) => e.key === "Escape" && setOpen(false)}>
-        <span>{label}: {cur}</span><Icon name="keyboard_arrow_down" />
-      </button>
-      {open && (
-        <div className="pop" role="listbox" aria-label={label} style={{ top: 40, insetInlineStart: 0, minWidth: 200, padding: "6px 0" }}>
-          {options.map(([v, l]) => (
-            <button key={v} role="option" aria-selected={v === value} className={"menu-item" + (v === value ? " on" : "")}
-              onClick={() => { onChange(v); setOpen(false); }}>{l}</button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
+// 02 Home: my queue (Option 3 "Desk"): queue list (420 px) + the selected file's preview. The preview stays empty until the
+// officer picks a file (like Mail); the pick is in the URL (#/?file=APP-07).
 export function Home() {
   const { t } = useSettings();
   const nav = useNavigate();
@@ -56,16 +29,18 @@ export function Home() {
     }
     return list;
   }, [q.data, demo.approved, lane, due, sort]);
-  const [sel, setSel] = useState<string | null>(null);
+  const [params, setParams] = useSearchParams();
+  const sel = params.get("file");
+  const setSel = (id: string) => setParams({ file: id }, { replace: true });
   const [batch, setBatch] = useState(false);
-  const current = items.find((i) => i.app_id === sel) || items[0];
+  const current = items.find((i) => i.app_id === sel);
   const listRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
       if (/INPUT|TEXTAREA|SELECT/.test((e.target as HTMLElement).tagName) || !items.length) return;
-      const i = Math.max(0, items.findIndex((x) => x.app_id === current?.app_id));
-      if (e.key === "j") setSel(items[Math.min(items.length - 1, i + 1)].app_id);
-      if (e.key === "k") setSel(items[Math.max(0, i - 1)].app_id);
+      const i = items.findIndex((x) => x.app_id === current?.app_id);
+      if (e.key === "j") setSel(items[i < 0 ? 0 : Math.min(items.length - 1, i + 1)].app_id);
+      if (e.key === "k") setSel(items[i < 0 ? 0 : Math.max(0, i - 1)].app_id);
       if (e.key === "Enter" && current && document.activeElement?.closest(".qlist")) nav(`/case/${current.app_id}`);
     };
     document.addEventListener("keydown", k);
@@ -78,7 +53,6 @@ export function Home() {
         <div className="qhead">
           <span className="eyebrow">{q.data ? q.data.role.name : t("Regulation Bureau")}<span className="sep">·</span>{t("All regions")}</span>
           <h1>{t("Your queue.")}<span className="line2">{q.data ? `${items.length} ${t("waiting.")}` : " "}</span></h1>
-          {q.data && <p className="muted" style={{ margin: "8px 0 0", fontSize: 13 }}>{q.data.summary}</p>}
           <div className="filters">
             <Dropdown label={t("Lane")} value={lane} onChange={setLane} options={[["", t("All")], ["return_for_rectification", t("Return for rectification")],
               ["human_review", t("Human review")], ["clear", t("Clear")]]} />
@@ -98,7 +72,9 @@ export function Home() {
           {items.map((i) => <QueueRow key={i.app_id} i={i} on={i.app_id === current?.app_id} onClick={() => setSel(i.app_id)} onOpen={() => nav(`/case/${i.app_id}`)} />)}
         </div>
       </section>
-      <section className="preview" aria-label={t("Selected file")}>{current ? <Preview item={current} index={items.indexOf(current)} /> : null}</section>
+      <section className="preview" aria-label={t("Selected file")}>{current ? <Preview item={current} index={items.indexOf(current)} />
+        : <div className="state pv-empty"><GearMark size={40} /><p style={{ margin: 0, color: "var(--text)" }}>{t("Select a file from the queue to see it here.")}</p>
+            <p className="muted" style={{ margin: 0, fontSize: 12.5 }}><span className="kbd">j</span> / <span className="kbd">k</span> {t("to move")}, <span className="kbd">Enter</span> {t("to open")}</p></div>}</section>
       {batch && <BatchModal onClose={() => setBatch(false)} />}
     </div>
   );
@@ -126,7 +102,6 @@ function Preview({ item, index }: { item: QueueItem; index: number }) {
   const d = c.data;
   const focus = d.findings.find((f) => f.evidence.some((e) => e.bbox))?.evidence[0]?.doc_id || d.documents[0]?.doc_id;
   const doc = d.documents.find((x) => x.doc_id === focus) || d.documents[0];
-  const sealed = d.timeline.some((e) => e.type === "letter issued");
   return (
     <div className="pv">
       <div className="pv-head">
@@ -141,9 +116,7 @@ function Preview({ item, index }: { item: QueueItem; index: number }) {
             <button className="btn" onClick={() => setAssignOpen(!assignOpen)} aria-expanded={assignOpen}>{t("Assign")}</button>
             {assignOpen && <AssignMenu appId={d.app_id} onClose={() => setAssignOpen(false)} />}
           </div>
-          <button className="btn" onClick={() => nav(`/case/${d.app_id}`)}>{t("Open full case")}</button>
-          <button className="btn primary" onClick={() => nav(mainActionPath(role, d.app_id, d.lane))}>
-            {d.action}<Icon name="arrow_forward" /></button>
+          <button className="btn" onClick={() => nav(mainActionPath(role, d.app_id, d.lane))}>{d.action}</button>
         </div>
       </div>
       <div className="strip" style={{ marginTop: 16, paddingBottom: 16, borderBottom: "1px solid var(--border)" }}>
@@ -152,7 +125,8 @@ function Preview({ item, index }: { item: QueueItem; index: number }) {
       <div className="pv-body">
         <div>
           <div className="doc-title"><b>{doc?.label}</b><span className="muted">{t("page")} 1 {t("of")} {doc?.pages}</span></div>
-          <DocViewer src={doc?.page_urls[0]} boxes={doc ? boxesFor(d, doc.doc_id) : []} height={430} />
+          <DocViewer src={doc?.page_urls[0]} boxes={doc ? boxesFor(d, doc.doc_id) : []} height={400} />
+          <button className="btn brand wide" style={{ marginTop: 12 }} onClick={() => nav(`/case/${d.app_id}`)}>{t("Open full case")}<Icon name="arrow_forward" /></button>
           <p className="note">{t("Boxes show where Pramaan looked. Red: to return. Orange: to check.")}</p>
         </div>
         <div>
@@ -160,7 +134,7 @@ function Preview({ item, index }: { item: QueueItem; index: number }) {
           {d.findings.length ? d.findings.slice(0, 3).map((f) => <FindingCard key={f.finding_id} appId={d.app_id} f={f} />)
             : <div className="finding"><div className="finding-title">{t("All checks passed.")}</div><div className="finding-reason">{t("Spot check due before batch approval.")}</div></div>}
           <h3 className="sec" style={{ marginTop: 22 }}>{t("Case timeline")}</h3>
-          <ChainTimeline events={d.timeline.filter((e) => e.type !== "appeal window")} draft={d.lane === "return_for_rectification" && !sealed} />
+          <ChainTimeline events={d.timeline} lane={d.lane} />
         </div>
       </div>
     </div>
@@ -172,11 +146,11 @@ export function AssignMenu({ appId, onClose }: { appId: string; onClose: () => v
   const o = useView<Officer[]>("officers");
   const act = useActions();
   return (
-    <div className="pop" style={{ top: 42, insetInlineEnd: 0, width: 260, padding: "6px 0" }} role="menu">
+    <div className="pop menu" style={{ top: 42, insetInlineEnd: 0, insetInlineStart: "auto", width: 260 }} role="menu">
       <p className="muted" style={{ margin: "4px 14px 6px", fontSize: 12 }}>{t("Assign to an officer")}</p>
       {o.isLoading && <div style={{ padding: 12 }}><Skeleton rows={4} /></div>}
       {o.data?.map((x) => <button key={x.id} role="menuitem" className="menu-item" onClick={async () => { await act.assign(appId, x.id); onClose(); }}>
-        <Icon name="person" />{x.name}</button>)}
+        <Icon name="person" /><span className="mi-text">{x.name}</span></button>)}
     </div>
   );
 }

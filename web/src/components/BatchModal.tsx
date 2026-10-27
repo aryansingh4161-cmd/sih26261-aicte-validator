@@ -4,7 +4,7 @@ import { useActions } from "../data/actions";
 import type { Batch, Case } from "../data/types";
 import { useT } from "../app/settings";
 import { Icon } from "../icons";
-import { GearMark, Skeleton, StateBox } from "./ui";
+import { GearMark, Skeleton, StateBox, Unavailable } from "./ui";
 import { ChecklistCounts, DocViewer, boxesFor } from "./case";
 
 // 16 Batch-approve clear files: one random spot-check file must be opened and agreed first (queue.py, seeded).
@@ -60,7 +60,9 @@ export function BatchModal({ onClose }: { onClose: () => void }) {
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 16 }}>
               <span className="muted" style={{ fontSize: 12.5, maxWidth: 250 }}>{t("Letters of Approval will be drafted, sealed and put in the outbox.")}</span>
               <button className="btn" style={{ marginInlineStart: "auto" }} onClick={onClose}>{t("Cancel")}</button>
-              <button className="btn primary" disabled={!ready || busy} onClick={approve}><Icon name="verified_user" />{t("Approve")} {b.data.files.length} {t("and seal")}</button>
+              <Unavailable reason={t("Open the file picked for the spot check and agree first.")} active={!ready} align="end">
+                <button className="btn primary" disabled={!ready || busy} onClick={approve}><Icon name="verified_user" />{t("Approve")} {b.data.files.length} {t("and seal")}</button>
+              </Unavailable>
             </div>
           </>
         )}

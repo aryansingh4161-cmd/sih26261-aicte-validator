@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { assetUrl, currentMode } from "../data/client";
+import { assetUrl } from "../data/client";
 import type { Box, Case, Finding, TimelineEvent } from "../data/types";
 import { useActions, useDemoActions } from "../data/actions";
 import { useT } from "../app/settings";
@@ -40,47 +40,73 @@ export function boxesFor(c: Case, docId: string, page = 1) {
     .map((e) => ({ bbox: e.bbox as Box, lane: f.lane })));
 }
 
-export function FindingCard({ appId, f, compact }: { appId: string; f: Finding; compact?: boolean }) {
+export function FindingCard({ appId, f, compact, oneLine }: { appId: string; f: Finding; compact?: boolean; oneLine?: boolean }) {
   const t = useT();
   const act = useActions();
   const demo = useDemoActions();
-  const verdict = currentMode() === "demo" ? demo.feedback[f.finding_id] || f.feedback : f.feedback;
+  const verdict = demo.feedback[f.finding_id] || f.feedback;
   const [busy, setBusy] = useState(false);
   const mark = async (v: "correct" | "false alarm") => { setBusy(true); try { await act.feedback(appId, f.finding_id, v); } finally { setBusy(false); } };
   return (
-    <div className="finding">
+    <div className={"finding" + (verdict === "correct" ? " confirmed" : verdict === "false alarm" ? " dismissed" : "")}>
       <div className="finding-top">
         <LaneIcon lane={f.lane} size={16} />
         <span className="mono rule">{f.rule_id}</span>
         <span style={{ marginInlineStart: "auto", display: "flex", gap: 6 }}>
-          <button className={"btn small" + (verdict === "correct" ? " on" : "")} aria-pressed={verdict === "correct"} disabled={busy} onClick={() => mark("correct")}>{t("Correct")}</button>
-          <button className={"btn small" + (verdict === "false alarm" ? " on" : "")} aria-pressed={verdict === "false alarm"} disabled={busy} onClick={() => mark("false alarm")}>{t("False alarm")}</button>
+          <button className={"btn small" + (verdict === "correct" ? " on ok" : "")} aria-pressed={verdict === "correct"} disabled={busy} onClick={() => mark("correct")}>
+            {verdict === "correct" && <Icon name="check" />}{t("Correct")}</button>
+          <button className={"btn small" + (verdict === "false alarm" ? " on fa" : "")} aria-pressed={verdict === "false alarm"} disabled={busy} onClick={() => mark("false alarm")}>{t("False alarm")}</button>
         </span>
       </div>
       <div className="finding-title">{f.title}</div>
-      {!compact && <div className="finding-reason">{f.reason}</div>}
+      {!compact && <div className={"finding-reason" + (oneLine ? " one" : "")} title={oneLine ? f.reason : undefined}>{f.reason}</div>}
     </div>
   );
 }
 
-const TL_LABEL: Record<string, string> = { submitted: "Submitted", "auto-checked": "Auto-checked", assigned: "Assigned", "letter issued": "Letter issued",
-  resubmitted: "Resubmitted", "EVC pack issued": "Visit pack", decision: "Decision", "appeal window": "Appeal window", closed: "Closed" };
+export const STEP_LABEL: Record<string, string> = { submitted: "Submitted", "auto-checked": "Auto-checked", assigned: "Assigned",
+  "letter issued": "Letter issued", resubmitted: "Resubmitted", "EVC pack issued": "Visit pack", decision: "Decision", "appeal window": "Appeal window",
+  closed: "Closed" };
 const shortDate = (ts: string) => new Date(ts).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+type Step = { key: string; label: string; state: "done" | "current" | "next"; date?: string; hash?: string };
 
-/** Audit-chain timeline. Motion C: a new block slides 8 px into place and its hash appears (300 ms). */
-export function ChainTimeline({ events, draft }: { events: TimelineEvent[]; draft?: boolean }) {
+/** Steps of a file, oldest to newest: what happened (from the audit chain), then where the file is now, then what comes next. */
+function chainSteps(events: TimelineEvent[], lane: string): Step[] {
+  const has = (type: string) => events.some((e) => e.type === type);
+  const appeal = events.find((e) => e.type === "appeal window");
+  const appealOpen = !!appeal && appeal.note.toLowerCase().startsWith("open");
+  const done: Step[] = events.filter((e) => e.type !== "appeal window" || !appealOpen)
+    .map((e) => ({ key: e.type + e.ts, label: STEP_LABEL[e.type] || e.type, state: "done", date: shortDate(e.ts), hash: e.real ? e.hash.slice(0, 6) : undefined }));
+  const pending = [...(appealOpen ? ["Appeal window"] : []), ...(!has("letter issued") && lane !== "clear" ? ["Letter"] : []),
+    ...(!has("decision") ? ["Decision"] : []), ...(!appeal ? ["Appeal window"] : [])];
+  return [...done, ...pending.map((label, i): Step => ({ key: label, label, state: i === 0 ? "current" : "next" }))];
+}
+
+/** Audit-chain timeline: circles on a dotted line. Done = brand circle with a check and the date; current = gold ring; next =
+ * hollow dashed circle, label only. A hash shows only under a real audit-log block. Motion C: the dotted line draws in once. */
+export function ChainTimeline({ events, lane }: { events: TimelineEvent[]; lane: string }) {
   const t = useT();
   const reduce = useReducedMotion();
+  const steps = chainSteps(events, lane);
+  const n = steps.length;
+  const rtl = typeof document !== "undefined" && document.documentElement.dir === "rtl";
   return (
-    <ol className="chain" aria-label={t("Case timeline")}>
-      {events.map((e, i) => (
-        <motion.li key={e.type + e.ts} className="block" initial={reduce ? false : { x: -8, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
-          transition={{ duration: 0.3, delay: reduce ? 0 : i * 0.05, ease: "easeOut" }}>
-          <b>{t(TL_LABEL[e.type] || e.type)}</b><span>{shortDate(e.ts)}</span><span className="mono hash">{e.hash === "-" ? t("derived") : "#" + e.hash.slice(0, 6)}</span>
-        </motion.li>
-      ))}
-      {draft && <li className="block draft"><b>{t("Letter")}</b><span>{t("draft")}</span><span className="mono hash">{t("not sealed")}</span></li>}
-    </ol>
+    <div className="chain2">
+      <motion.span className="chain2-line" aria-hidden="true" style={{ insetInlineStart: `${50 / n}%`, insetInlineEnd: `${50 / n}%` }}
+        initial={reduce ? false : { clipPath: rtl ? "inset(0 0 0 100%)" : "inset(0 100% 0 0)" }} animate={{ clipPath: "inset(0 0% 0 0%)" }}
+        transition={{ duration: 0.6, ease: "easeOut" }} />
+      <ol aria-label={t("Case timeline")}>
+        {steps.map((s) => (
+          <li key={s.key} className={"step " + s.state} aria-current={s.state === "current" ? "step" : undefined}>
+            <span className="node" aria-hidden="true">{s.state === "done" && <svg viewBox="0 0 16 16"><path d="M4.2 8.3 L6.9 11 L11.8 5.6" /></svg>}</span>
+            <span className="step-label" title={t(s.label)}>{t(s.label)}</span>
+            {s.date && <span className="step-date">{s.date}</span>}
+            {s.hash && <span className="mono step-hash" title={t("Audit-log block")}>#{s.hash}</span>}
+            <span className="sr-only">{t(s.state === "done" ? "done" : s.state === "current" ? "now" : "next")}</span>
+          </li>
+        ))}
+      </ol>
+    </div>
   );
 }
 

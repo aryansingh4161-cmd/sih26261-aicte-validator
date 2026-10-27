@@ -20,3 +20,5 @@ button { font: inherit; color: inherit; }
 [dir="rtl"] .mono, [dir="rtl"] .ltr { direction: ltr; unicode-bidi: isolate; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; } }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0; }
+/* Indian scripts (WK27 A6): Noto Sans Devanagari and friends need a little more line height; controls keep one line. */
+html[lang="hi"] body, html[lang="mr"] body, html[lang="bn"] body, html[lang="ta"] body { line-height: 1.55; }

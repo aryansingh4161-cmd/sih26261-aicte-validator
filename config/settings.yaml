@@ -35,3 +35,5 @@ assignment_sla_days: {human_review: 5, return_for_rectification: 3, clear: 2, in
 geo_max_km: 2.0
 # WK25-24 rule administration: local copy of the Approval Process Handbook used for word-for-word clause checks (not committed)
 handbook_pdf: data/handbook/APH.pdf
+academic_year_shown: {"2027-28": "2026-27"}   # WK27 A5 (designed): the synthetic files are generated for 2027-28; the web screens and letters show the current Extension of Approval cycle 2026-27. Display only (api/ctx.py); the engine and run_eval read the files unchanged
+false_alarm_min_marks: 20      # WK27 E2: the "marked false alarm" share is shown only after this many officer marks (designed)

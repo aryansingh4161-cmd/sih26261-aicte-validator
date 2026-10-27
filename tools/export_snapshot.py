@@ -1,5 +1,6 @@
 """Static snapshot of the 23 SYNTHETIC demo cases for the web app's demo mode (WK26): no backend needed.
   python -m tools.export_snapshot [--out web/public/snapshot] [--langs en,hi,bn,ta,mr] [--today 2026-10-27]
+Also pre-builds the officer copy ZIP of each case (<out>/zips/<APP>.zip) for the demo Case ZIP button.
 Runs the pipeline on data/demo/apps into a fresh temporary folder, records a few officer actions (a sealed Letter of
 Deficiency for APP-02, an assignment, a note, one feedback mark) so the screens are not empty, then writes every API view as
 JSON: <out>/<lang>/<path>.json (path = the API path without /api/, e.g. cases/APP-07/checklist) plus page images, heatmaps and
@@ -63,8 +64,7 @@ def main() -> None:
             write(a.out, lang, f"cases/{app_id}/resubmission", C2.resubmission(c, app_id))
             write(a.out, lang, f"cases/{app_id}/letter", C2.letter_draft(c, app_id))
             write(a.out, lang, f"cases/{app_id}/evc", G.evc(Ctx(out=work, today=today, lang=lang, role="evc"), app_id))
-            from pramaan.notes import list_notes
-            write(a.out, lang, f"cases/{app_id}/notes", list_notes(c.db, app_id))
+            write(a.out, lang, f"cases/{app_id}/notes", C.notes(c, app_id))
         for name, fn in (("letters", G.letters), ("outbox", G.outbox), ("calendar", G.calendar), ("appeals", G.appeals), ("batch", G.batch)):
             write(a.out, lang, name, fn(c))
         write(a.out, lang, "search/_all", G.search(c, ""))
@@ -82,8 +82,8 @@ def main() -> None:
                 if im is not None:
                     p = os.path.join(img, "documents", app_id, d.doc_id, "page", f"{k}.png")
                     os.makedirs(os.path.dirname(p), exist_ok=True); im.save(p, optimize=True); n += 1
-                h = os.path.join(work, "heatmaps", f"{d.doc_id}_p{k}.png")
-                if os.path.exists(h):
+                h = c0.heatmap(d.doc_id, k)
+                if h:
                     p = os.path.join(img, "documents", app_id, d.doc_id, "heatmap", f"{k}.png")
                     os.makedirs(os.path.dirname(p), exist_ok=True); shutil.copy(h, p)
         for ph in c0.manifest(app_id).get("photos", []):
@@ -91,6 +91,9 @@ def main() -> None:
             os.makedirs(os.path.dirname(p), exist_ok=True)
             from PIL import Image
             im = Image.open(ph).convert("RGB"); im.thumbnail((720, 720)); im.save(p, quality=78, optimize=True)   # display copy
+    zips = os.path.join(a.out, "zips"); os.makedirs(zips, exist_ok=True)       # WK27 D5: the officer copy of each case file, pre-built
+    for app_id in ids:
+        shutil.copy(actions.case_zip(c0, app_id), os.path.join(zips, f"{app_id}.zip"))
     letters = os.path.join(a.out, "letters"); os.makedirs(letters, exist_ok=True)
     for f in os.listdir(os.path.join(work, "letters")):
         shutil.copy(os.path.join(work, "letters", f), letters)

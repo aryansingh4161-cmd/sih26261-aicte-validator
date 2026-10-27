@@ -93,8 +93,7 @@ def resubmission(app_id: str, lang: str = "en"):
 
 @app.get("/api/cases/{app_id}/notes")
 def notes(app_id: str):
-    from pramaan.notes import list_notes
-    return list_notes(ctx().db, app_id)
+    return C.notes(ctx(), app_id)
 
 
 @app.post("/api/cases/{app_id}/notes")
@@ -227,7 +226,7 @@ def page_image(app_id: str, doc_id: str, n: int):
 
 @app.get("/api/documents/{app_id}/{doc_id}/heatmap/{n}.png")
 def heatmap(app_id: str, doc_id: str, n: int):
-    p = os.path.join(ctx().out, "heatmaps", f"{doc_id}_p{n}.png")
+    p = ctx().heatmap(doc_id, n) or ""
     if not os.path.exists(p):
         raise HTTPException(404, "no heatmap for this page")
     return FileResponse(p, media_type="image/png")

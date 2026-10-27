@@ -7,6 +7,7 @@ from __future__ import annotations
 import glob
 import json
 import os
+import re
 from dataclasses import dataclass, field
 from datetime import date
 
@@ -58,7 +59,37 @@ class Ctx:
         return os.environ.get("PRAMAAN_OUTBOX", os.path.join(self.out, "outbox"))
 
     def tr(self, text: str | None) -> str:
-        return t(text, self.lang) if text else (text or "")
+        return self.plain(self.year(t(text, self.lang))) if text else (text or "")
+
+    def plain(self, text: str) -> str:
+        """No raw internal names on screen (WK27 A4): '(MOCK X)' -> '(X, demo adapter)', 'fire_cert' -> the document's name,
+        'institute_name:' -> 'Institute name:'. Display only; the engine's text is unchanged."""
+        text = re.sub(r"\(MOCK ([^)]+)\)", lambda m: f"({m.group(1)}, {t('demo adapter', self.lang)})", text)
+        text = re.sub(r"\bMOCK ", "", text)
+        text = re.sub(r"(?<![-/\w])(" + "|".join(k for k in DOC_LABEL if "_" in k) + r")\b(?![-/.])",
+                      lambda m: t(DOC_LABEL[m.group(1)], self.lang).lower() if self.lang == "en" else t(DOC_LABEL[m.group(1)], self.lang), text)
+        text = re.sub(r"'([a-z]+(?:_[a-z]+)+)'", lambda m: "'" + t(m.group(1).replace("_", " ").capitalize(), self.lang) + "'", text)
+        return re.sub(r"(^|[\s(;])([a-z]+(?:_[a-z]+)+)(?=:)", lambda m: m.group(1) + t(m.group(2).replace("_", " ").capitalize(), self.lang), text)
+
+    def year(self, text: str | None) -> str:
+        """Academic year as the screens show it (settings academic_year_shown, WK27 A5; display only)."""
+        for a, b in (self.settings().get("academic_year_shown") or {}).items():
+            text = (text or "").replace(a, b)
+        return text or ""
+
+    def heatmap(self, doc_id: str, n: int) -> str | None:
+        """The tamper model writes its heatmaps to output/heatmaps (pramaan/tamper_model.py); look there and in this run's folder."""
+        for d in (self.out, "output"):
+            p = os.path.join(d, "heatmaps", f"{doc_id}_p{n}.png")
+            if os.path.exists(p):
+                return p
+        return None
+
+    def name(self, actor: str | None) -> str:
+        """Display name for an actor id in the audit log (config/users.yaml), never the raw id."""
+        names = {u["id"]: u["name"] for u in self.users()}
+        names.update({"pramaan-pipeline": "Pramaan (automatic check)", "system": "System", "institute": "Institute"})
+        return self.tr(names.get(actor or "", actor or ""))
 
     def results(self) -> dict[str, ApplicationResult]:
         return {r.app_id: r for r in (ApplicationResult.model_validate_json(open(p).read())
@@ -85,7 +116,9 @@ class Ctx:
         return json.load(open(p)) if os.path.exists(p) else {}
 
     def settings(self) -> dict:
-        return yaml.safe_load(open("config/settings.yaml")) or {}
+        if not hasattr(self, "_settings"):
+            self._settings = yaml.safe_load(open("config/settings.yaml")) or {}
+        return self._settings
 
     def users(self) -> list[dict]:
         return (yaml.safe_load(open("config/users.yaml")) or {}).get("users", [])
@@ -100,6 +133,11 @@ def place(address: str | None) -> str:
 def due_word(due: date, today: date) -> str:
     d = (due - today).days
     return "Overdue" if d < 0 else "Today" if d == 0 else "Tomorrow" if d == 1 else f"{due.day} {due:%b}"
+
+
+def clean_reason(text: str) -> str:
+    """Drop internal file paths from a finding's reason (e.g. 'Heatmap: output/heatmaps/x.png.')."""
+    return re.sub(r"\s*Heatmap: \S+\.png\.?", "", text or "")
 
 
 def initials(name: str) -> str:

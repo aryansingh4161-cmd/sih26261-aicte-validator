@@ -4,8 +4,6 @@ from __future__ import annotations
 import hashlib
 import json
 
-import yaml
-
 from pramaan.geo import geocode
 from pramaan.letters import build_lod
 from pramaan.photo_check import km
@@ -15,7 +13,7 @@ from pramaan.schemas import Application
 from pramaan.util import norm_name
 from pramaan.verify_board import board
 
-from .ctx import DOC_LABEL, LANE_LABEL, Ctx
+from .ctx import DOC_LABEL, LANE_LABEL, Ctx, clean_reason
 
 RESULT = {"verified": ("Matches", "clear"), "mismatch": ("Does not match", "return_for_rectification"),
           "expired": ("Expired", "return_for_rectification"), "pending": ("Pending", "human_review"),
@@ -141,30 +139,33 @@ def resubmission(ctx: Ctx, app_id: str) -> dict:
 
 
 def letter_draft(ctx: Ctx, app_id: str, include: list[str] | None = None) -> dict:
+    """Letter of Deficiency draft. items = every Return or Human review finding, `include` = in the letter by default (Return) or as
+    the officer asked; deficiencies = the drafted text for EVERY item, so the editor can tick any of them in or out (WK27 D3/D4).
+    The officer decides: a Human review item the officer ticks goes into the letter as a deficiency."""
     r, m = ctx.result(app_id), ctx.manifest(app_id)
+    cand = [f for f in r.findings if f.lane in ("return_for_rectification", "human_review")]
     items = [{"finding_id": f.finding_id, "rule_id": f.rule_id, "title": ctx.tr(f.title), "lane": f.lane,
+              "default": f.lane == "return_for_rectification",
               "include": (f.finding_id in include) if include is not None else f.lane == "return_for_rectification",
-              "clause": f.aph_clause, "clause_check": _clause(f.aph_clause)} for f in r.findings if f.lane in ("return_for_rectification", "human_review")]
-    keep = {i["finding_id"] for i in items if i["include"]}
-    # the officer decides: a Human review item the officer includes goes into the letter as a deficiency
-    sub = r.model_copy(update={"findings": [f.model_copy(update={"lane": "return_for_rectification"}) if f.lane == "human_review" else f
-                                            for f in r.findings if f.finding_id in keep]})
+              "clause": f.aph_clause, "clause_check": _clause(f.aph_clause)} for f in cand]
+    year = ctx.year(r.academic_year)
+    sub = r.model_copy(update={"academic_year": year, "findings": [f.model_copy(update={"lane": "return_for_rectification"}) for f in cand]})
     reg = (m.get("declared", {}).get("region") or "XX").replace("-", "")[:2].upper()
+    file_no = f"AICTE/RB/{reg}/{year}/{app_id}"
     lod = build_lod(sub, institute=m.get("declared", {}).get("institute_name", ""), permanent_id=m.get("permanent_id", ""),
-                    file_no=f"AICTE/RB/{reg}/{r.academic_year}/{app_id}", today=ctx.today, lang=ctx.lang)
-    pack = yaml.safe_load(open("config/rulepack_eoa_existing.yaml")).get("rules", [])
-    quotes = sorted({x["aph_clause"] for x in pack if x.get("aph_clause")})
-    found = sum(1 for q in quotes if _clause(q)["found"])
+                    file_no=file_no, today=ctx.today, lang=ctx.lang)
+    keep = {i["finding_id"] for i in items if i["include"]}
+    text = build_lod(sub.model_copy(update={"findings": [f for f in sub.findings if f.finding_id in keep]}), institute=m.get("declared", {}).get("institute_name", ""),
+                     permanent_id=m.get("permanent_id", ""), file_no=file_no, today=ctx.today, lang=ctx.lang)["text"]
     dec = m.get("declared", {})
-    header = {"file_no": f"AICTE/RB/{reg}/{r.academic_year}/{app_id}", "date": ctx.today.strftime("%d %b %Y"), "institute": dec.get("institute_name"),
-              "address": dec.get("address"), "permanent_id": m.get("permanent_id"), "academic_year": r.academic_year,
-              "region": dec.get("region"), "subject": ctx.tr(f"Letter of Deficiency for Extension of Approval {r.academic_year}")}
-    defs = [{**x, "clause_check": _clause(x["clause"])} for x in lod["deficiencies"]]
-    return {"app_id": app_id, "items": items, "text": lod["text"], "header": header, "deficiencies": defs,
+    header = {"file_no": file_no, "date": ctx.today.strftime("%d %b %Y"), "institute": dec.get("institute_name"),
+              "address": dec.get("address"), "permanent_id": m.get("permanent_id"), "academic_year": year,
+              "region": dec.get("region"), "subject": ctx.tr(f"Letter of Deficiency for Extension of Approval {year}")}
+    defs = [{**{k: ctx.plain(ctx.year(clean_reason(v))) if isinstance(v, str) else v for k, v in x.items()}, "clause_check": _clause(x["clause"])} for x in lod["deficiencies"]]
+    return {"app_id": app_id, "items": items, "text": ctx.year(text), "header": header, "deficiencies": defs,
             "closing": ctx.tr("You are requested to upload the rectified documents on the AICTE portal within the time given on the portal. "
                               "You may appeal within 7 days of this letter being uploaded."),
-            "signature": [ctx.tr("Regulation Bureau"), ctx.tr(f"{dec.get('region', '')} Regional Office, AICTE").strip()],
-            "quotes": {"found": found, "total": len(quotes), "label": "measured"}}
+            "signature": [ctx.tr("Regulation Bureau"), ctx.tr(f"{dec.get('region', '')} Regional Office, AICTE").strip()]}
 
 
 def _clause(text: str | None) -> dict:

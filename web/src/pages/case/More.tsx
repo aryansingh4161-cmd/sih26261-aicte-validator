@@ -4,7 +4,7 @@ import { useDemoActions } from "../../data/actions";
 import type { Case } from "../../data/types";
 import { useT } from "../../app/settings";
 import { Icon } from "../../icons";
-import { ChainTimeline } from "../../components/case";
+import { ChainTimeline, STEP_LABEL } from "../../components/case";
 import { NotesList } from "./Evidence";
 
 // Case tabs: Letters (this file's letters), Notes (internal, never sent), Timeline (the audit chain).
@@ -47,11 +47,11 @@ export function Timeline({ c }: { c: Case }) {
   return (
     <div className="tabpage">
       <p className="muted" style={{ marginTop: 0 }}>{t("Every step is a block in the audit chain. Each hash depends on the block before it, so a changed step shows.")}</p>
-      <ChainTimeline events={c.timeline} />
+      <ChainTimeline events={c.timeline} lane={c.lane} />
       <table className="table" style={{ marginTop: 20 }}>
         <thead><tr><th>{t("When")}</th><th>{t("Step")}</th><th>{t("By")}</th><th>{t("Hash")}</th><th>{t("Note")}</th></tr></thead>
-        <tbody>{c.timeline.map((e) => <tr key={e.type + e.ts}><td className="muted">{e.ts.replace("T", " ").slice(0, 16)}</td><td>{t(e.type)}</td>
-          <td>{e.actor}</td><td className="mono">{e.hash === "-" ? t("derived") : "#" + e.hash}</td><td className="muted">{e.note}</td></tr>)}</tbody>
+        <tbody>{c.timeline.map((e) => <tr key={e.type + e.ts}><td className="muted">{e.ts.replace("T", " ").slice(0, 16)}</td><td>{t(STEP_LABEL[e.type] || e.type)}</td>
+          <td>{e.actor}</td><td className="mono">{e.real ? "#" + e.hash : ""}</td><td className="muted">{e.note}</td></tr>)}</tbody>
       </table>
     </div>
   );

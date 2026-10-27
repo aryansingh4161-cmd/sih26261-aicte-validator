@@ -125,10 +125,13 @@ def analytics(ctx: Ctx) -> dict:
     eyebrow = {"regulation_bureau": "Regulation Bureau · my numbers", "scrutiny": "Scrutiny / Re-Scrutiny Committee · files at your stage",
                "evc": "Expert Visit Committee · files at your stage", "shc": "Standing Hearing Committee · files at your stage",
                "ec": "Executive Committee · leadership view · all regions", "sac": "Standing Appellate Committee · files at your stage"}[ctx.role]
-    return {"eyebrow": ctx.tr(eyebrow), "headline": ctx.tr(f"{len(scope)} files checked so far this season."), "synthetic": True,
-            "kpis": [{"value": f"{A.median_processing_days(scope, mans) or 0:g} days", "label": ctx.tr("median time to first check (synthetic dates)")},
+    return {"eyebrow": ctx.tr(eyebrow), "headline": f"{len(scope)} " + ctx.tr("files checked so far this season."), "synthetic": True,
+            "kpis": [{"value": f"{A.median_processing_days(scope, mans) or 0:g} " + ctx.tr("days"), "label": ctx.tr("median time to first check (synthetic dates)")},
                      {"value": f"{round(100 * lanes.get('return_for_rectification', 0) / max(1, len(scope)))}%", "label": ctx.tr("returned for rectification")},
-                     {"value": f"{round(100 * n_fa / n_fb) if n_fb else 0}%", "label": ctx.tr("findings marked \"false alarm\" by officers")},
+                     ({"value": f"{round(100 * n_fa / n_fb)}%", "label": ctx.tr("findings marked \"false alarm\" by officers")}
+                      if n_fb >= int(ctx.settings().get("false_alarm_min_marks", 20)) else      # WK27 E2: too few marks to show a share
+                      {"value": ctx.tr("Not enough marks yet"), "label": ctx.tr("findings marked \"false alarm\" by officers") +
+                       f" ({n_fb} {ctx.tr('of')} {ctx.settings().get('false_alarm_min_marks', 20)} {ctx.tr('marks needed')})", "small": True}),
                      {"value": "0", "label": ctx.tr("files decided by the AI alone")}],
             "weeks": [{"week": f"W{w}", **{k: c.get(k, 0) for k in ("clear", "human_review", "return_for_rectification")}} for w, c in sorted(weeks.items())],
             "top": [{"title": ctx.tr(tt), "count": n} for tt, n in A.top_deficiencies(scope, 5)], "regions": reg_rows,

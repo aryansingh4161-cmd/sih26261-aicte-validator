@@ -4,12 +4,12 @@ export type QueueItem = { app_id: string; institute: string; permanent_id: strin
   region: string; officer: string; trust: number; lane: string; lane_label: string; priority: number; due_by: string; due_word: string;
   headline: string; headline_lane: string };
 export type Queue = { role: { id: string; name: string; action: string }; summary: string; count: number; items: QueueItem[] };
-export type Doc = { doc_id: string; label: string; doc_type: string; pages: number; status: string; scanned: boolean; page_urls: string[];
+export type Doc = { doc_id: string; label: string; doc_type: string; kind: "document" | "photo"; pages: number; status: string; scanned: boolean; page_urls: string[];
   heatmap_urls: Record<string, string> };
 export type Finding = { finding_id: string; rule_id: string; title: string; reason: string; lane: string; severity: string; source: string;
   doc_id: string | null; clause: string | null; clause_verified: boolean; evidence: { doc_id: string; page: number; bbox: Box | null }[];
-  feedback: string | null };
-export type TimelineEvent = { ts: string; actor: string; type: string; hash: string; refs: string[]; note: string };
+  group: "doc" | "photo" | "file"; feedback: string | null };
+export type TimelineEvent = { ts: string; actor: string; type: string; hash: string; refs: string[]; note: string; real: boolean };
 export type Case = { app_id: string; institute: string; permanent_id: string; category: string; academic_year: string; place: string; lane: string;
   lane_label: string; trust: { score: number; reasons: string[]; label: string };
   checklist: { passed: number; to_check: number; to_return: number; not_automated: number }; assigned: string; due_by: string; due_word: string;
@@ -30,7 +30,7 @@ export type Resubmission = { available: boolean; note?: string; previous?: strin
   before_image?: string | null; after_image?: string | null };
 export type Note = { note_id?: number; ts: string; author: string; text: string; mentions?: string[] };
 export type LetterDraft = { app_id: string; text: string; items: { finding_id: string; rule_id: string; title: string; lane: string; include: boolean;
-  clause: string | null; clause_check: { found: boolean; page: number | null } }[]; quotes: { found: number; total: number; label: string } };
+  default: boolean; clause: string | null; clause_check: { found: boolean; page: number | null } }[] };
 export type LetterFull = LetterDraft & { header: { file_no: string; date: string; institute: string; address: string; permanent_id: string;
   academic_year: string; region: string; subject: string }; deficiencies: { n: number; rule_id: string; what: string; reason: string; document: string;
   clause: string | null; to_submit: string; finding_id: string; clause_check: { found: boolean; page: number | null } }[];
@@ -42,7 +42,7 @@ export type CalEvent = { date: string; kind: string; app_id: string | null; titl
 export type Calendar = { events: CalEvent[]; next7: CalEvent[]; headline: string; note: string; today: string };
 export type Appeal = { appeal: string; app_id: string; institute: string; against: string; filed: string; days_left: number; state: string; state_label: string; clause: string };
 export type Appeals = { appeals: Appeal[]; open: number; headline: string; note: string };
-export type Analytics = { eyebrow: string; headline: string; synthetic: boolean; kpis: { value: string; label: string }[];
+export type Analytics = { eyebrow: string; headline: string; synthetic: boolean; kpis: { value: string; label: string; small?: boolean }[];
   weeks: { week: string; clear: number; human_review: number; return_for_rectification: number }[]; top: { title: string; count: number }[];
   regions: { region: string; files: number; clear: number; review: number; returned: number; median_days: number | null }[]; note: string };
 export type SearchRow = { app_id: string; institute: string; why: string; lane: string; lane_label: string; score: number };

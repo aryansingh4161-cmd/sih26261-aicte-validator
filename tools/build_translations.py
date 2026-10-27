@@ -27,11 +27,22 @@ def strings() -> list[str]:
         src = open(p, encoding="utf-8").read()
         found |= set(re.findall(r'(?<![fA-Za-z_])t\("((?:[^"\\\n]|\\.)+)"', src))
         found |= set(re.findall(r"(?<![fA-Za-z_])t\('((?:[^'\\\n]|\\.)+)'", src))
+        if p.endswith((".tsx", ".ts")):                      # WK27 A6: labels kept in arrays / maps and passed to t(label) later
+            found |= set(re.findall(r'\b(?:label|short|name):\s*"([A-Z][^"\n]*)"', src))
+            found |= set(re.findall(r'\[\s*"[^"\n]*",\s*"([A-Z][^"\n]*)"\s*\]', src))
+            found |= set(re.findall(r'"[^"\n]+":\s*"([A-Z][^"\n]*)"', src))
+            found |= set(re.findall(r'[{,]\s*[a-z_]+:\s*"([A-Z][a-z][^"\n]*)"', src))
+            for m in re.findall(r'\bt\(([^()\n]*\?[^()\n]*)\)', src):  # t(x ? "a" : "b")
+                found |= set(re.findall(r'"([^"\n]+)"', m))
+            for arr in re.findall(r'const (?:steps|STEPS)\s*=\s*\[([^\]]+)\]', src):
+                found |= set(re.findall(r'"([^"\n]+)"', arr))
     for row in (yaml.safe_load(open("config/checklists/eoa_existing.yaml")) or {}).get("rows", []):
         found.add(row["item"])
     from pramaan.i18n import BANNER
     found.add(BANNER)
-    return sorted(s for s in found if re.search(r"[A-Za-z]", s) and "{" not in s)
+    found |= {"confirm {n} findings"}
+    found = {x.replace('\\"', '"') for x in found}                 # t("a \"b\"") in source = 'a "b"' at run time
+    return sorted(s for s in found if re.search(r"[A-Za-z]", s) and ("{" not in s or s in ("confirm {n} findings",)) and not s.startswith(("var(", "#")))
 
 
 if __name__ == "__main__":
@@ -46,6 +57,9 @@ if __name__ == "__main__":
     for lang in langs:
         t0 = time.time()
         table = translate_many(src, lang)
+        reviewed = f"config/i18n/{lang}_reviewed.json"           # WK27 A6: hand-checked words win over the machine translation
+        if os.path.exists(reviewed):
+            table.update({k: v for k, v in json.load(open(reviewed, encoding="utf-8")).items() if not k.startswith("_")})
         json.dump(dict(sorted(table.items())), open(f"config/i18n/{lang}.json", "w", encoding="utf-8"), ensure_ascii=False, indent=1)
         kept = sum(table[s] == s for s in src)
         print(f"{lang}: {len(src)} strings in {time.time() - t0:.0f} s ({kept} kept in English: placeholders lost or nothing to translate)",
